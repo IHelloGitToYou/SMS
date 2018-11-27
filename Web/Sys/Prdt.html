@@ -1,0 +1,337 @@
+﻿<!DOCTYPE html>
+<html>
+<head runat="server">
+    <title>货品代号</title>
+    <script type="text/javascript">
+            var PAGE_Locaction = "Sys/Prdt.html";
+            var PageClose;
+    </script>
+
+    <link href="../JS/resources/css/ext-all.css" rel="stylesheet" type="text/css" />
+    <script src="../JS/ext-all.js?version=2" type="text/javascript"></script>
+    <script src="../JS/Setting/DataModel.js?version=9"></script>
+    <script src="../JS/commonJSFn.js?version=18" type="text/javascript"></script>
+    <script src="../JS/SMSCommonJS.js?version=20" type="text/javascript"></script>
+    <script src="../JS/SunGridHeadYAOSELF.js?version=2" type="text/javascript"></script>
+    <script src="../JS/新SunEditor.js?version=19"></script>
+
+    <script src="../JS/Setting/Prdt_Setting.js" type="text/javascript"></script>
+    <script type="text/javascript">
+//        代号	prd_no	varchar(40)
+//        名称	name	varchar(100)
+//        简称	snm	varchar(100)
+//        规格	spc	varchar(500)
+//        英文名称	eng_name	varchar(100)
+//        状态	state	varchar(2)
+//        备注	rem	ntext
+        Ext.onReady(function () {
+            var grid, store;
+            var ashxUrl = '../ASHX/Prdt.ashx';
+
+            var gridPanel = Ext.create('PrdtSet.PrdtGrid', {
+                region: 'center',
+                listeners: {
+                    MyRender: function () {
+                        var Me = this;
+
+                        store = Me.store;
+                        grid = Me.grid;
+                        Me.grid.on('itemclick', function (view, record, item, index, e, eOpts) {
+                            if (showWin.isVisible() === false)
+                                return true;
+
+                            form.loadRecord(record);
+                            form.state = 'view';
+                            form.onViewState();
+                            form.prd_no = record.get('prd_no');
+                        });
+
+
+                        Me.grid.on('itemdblclick', function (view, record, item, index, e, eOpts) {
+                            if (showWin.isVisible() === true)
+                                return true;
+                            showWin.show();
+
+                            Me.grid.fireEvent('itemclick', view, record, item, index, e, eOpts);
+                        });
+
+                        store.proxy.url = ashxUrl;
+                        //保存上一个查询参数
+                        store.on('beforeload', function (vstore, operation, eOpts) {
+                            // console.log(operation.params);
+                            if (!operation.params)
+                                store.proxy.extraParams = store.lastParams;
+                            else
+                                store.lastParams = operation.params;
+                        });
+
+                        store.load({
+                            params: { action: 'GETDATA', sqlWhere: '' }
+                        });
+                    }
+                }
+            });
+
+            var form = Ext.create('PrdtFormClass', {
+                //layout: 'anchor',
+                //height: 150,
+                //          width : 600,
+                //renderTo: Ext.getBody()
+            });
+
+
+            var showWin = Ext.create('Ext.window.Window', {
+                title: '货品资料',
+                closeAction: 'hide',
+                height: 200,
+                // width: 400,
+                layout: 'fit',
+                items: [
+                    form
+                ],
+                listeners: {
+                    show: function () {
+                        //gridBar.setDisabled('btnsave,btndelete', false);
+                    },
+                    close: function () {
+                        //gridBar.setDisabled('btnsave,btndelete', true);
+                    }
+                }
+            });
+
+
+            var gridBar = Ext.create('Ext.toolbar.Toolbar', {
+                region: 'south',
+                fnAfterrender: function () {
+                    this.btnnew = this.getComponent('btnnew');
+                    this.btnfind = this.getComponent('btnfind');
+                    this.btndelete = this.getComponent('btndelete');
+                    this.btnsave = this.getComponent('btnsave');
+                    this.btnclose = this.getComponent('btnclose');
+                },
+                items: ['-', {
+                    text: '新增',
+                    width: 60,
+                    height: 32,
+                    style: {
+                        borderColor: 'black'
+                    },
+
+                    itemId: 'btnnew',
+                    handler: function () {
+                        form.getForm().reset();
+                        form.state = 'new';
+                        form.onNewState();
+                        form.prd_no = '';
+                        showWin.show();
+                    }
+
+                }, '-', {
+                    text: '速查',
+                    width: 60,
+                    height: 32,
+                    style: {
+                        borderColor: 'black'
+                    },
+                    SearchAction: 'sqlWhere',
+                    name: 'btnfind',
+                    itemId: 'btnfind',
+                    icon: '../JS/resources/MyIcon/search.png',
+                    xtype: 'SunSearchWin_B',
+                    pageId: 'custInfo',
+                    btnId: 'custBtn',
+                    cellColoumns: [
+                            { myXtype: 'textfield', mySqlName: 'prd_no', myText: '货号', myBoxType: 'B', hidden: false },
+                            { myXtype: 'textfield', mySqlName: 'name', myText: '货名', myBoxType: 'B', hidden: false }
+                    ],
+                    listeners: {
+                        searchClickEvent: function (sql) {
+                            store.lastSql = sql;
+
+                            store.load({
+                                params: { 'sqlWhere': store.lastSql, 'action': 'GETDATA', NowUserId: GlobalVar.NowUserId },
+                                scope: this, callback: function (records, operation, success) { }
+                            });
+                        }
+                    }
+                }, '-', {
+                    text: '删除',
+                    width: 60,
+                    height: 32,
+                    style: {
+                        borderColor: 'black'
+                    },
+                    itemId: 'btndelete',
+                    handler: function () {
+                        Ext.MessageBox.confirm('询问？', '确定要删除代号为' + String(form.prd_no) + ' 货号吗?',
+                        function (btn) {
+                            if (btn == 'yes') {
+                                //新建末保存前，删除
+                                if (form.prd_no == '') {
+                                    form.getForm().reset();
+                                    return false;
+                                }
+
+                                var prd_no = form.getComponent('A').getComponent('prd_no').getValue(),
+                                    rec = store.findRecord('prd_no', prd_no),
+                                    oldIndex = store.indexOf(rec);
+
+                                Ext.Ajax.request({
+                                    url: ashxUrl,
+                                    params: {
+                                        action: 'Delete',
+                                        prd_no: form.prd_no
+                                    },
+                                    success: function (response) {
+                                        var json = Ext.JSON.decode(response.responseText);
+                                        if (json.result == true) {
+                                            alert("删除成功");
+                                            showWin.close();
+
+                                            form.state = 'new';
+                                            form.onNewState();
+                                            form.prd_no = '';
+                                            store.load({
+                                                params: { action: 'GETDATA', sqlWhere: '' },
+                                                callback: function () {
+                                                    grid.getSelectionModel().select(oldIndex -1 >= 0 ? oldIndex -1 : 0);
+                                                }
+                                            });
+
+                                            GlobalVar.RefreshData('PRDT');
+                                        }
+                                        else {
+                                            CommMsgShow("异常：", unescape(json.msg));
+                                        }
+                                    },
+                                    failure: function (form, action) {
+
+                                        CommMsgShow("异常：", form.responseText, true);
+                                    }
+                                });
+                            }
+                        });
+                    }
+                }, '-', {
+                    text: '保存',
+                    width: 60,
+                    height: 32,
+                    style: {
+                        borderColor: 'black'
+                    },
+                    itemId: 'btnsave',
+                    handler: function () {
+
+                        form.getForm().submit({
+                            url: ashxUrl,
+                            params: {
+                                action: form.state == 'new' ? 'new' : 'update',
+                                n_man: GlobalVar.NowUserId
+                            },
+                            success: function (vvvform, action) {
+                                var json = action.result; // Ext.JSON.decode(action.result);
+                                if (json.result == true) {
+
+
+                                    showWin.close();
+
+                                    store.load({
+                                        url: ashxUrl,
+                                        params: { action: 'GETDATA', sqlWhere: '' },
+                                        callback: function () {
+
+                                            var prd_no = form.getComponent('A').getComponent('prd_no').getValue(),
+                                                rec = store.findRecord('prd_no', prd_no);
+
+                                            if (!rec)
+                                                return false;
+
+                                            grid.getSelectionModel().select(rec);
+                                        }
+                                    });
+
+                                    GlobalVar.RefreshData('PRDT');
+                                }
+                                else {
+                                    CommMsgShow("异常：", json.msg, true);
+                                }
+                            },
+                            failure: function (form, action) {
+
+                                CommMsgShow('异常', '');
+                            }
+                        });
+                    }
+                }, '-', {
+                    text: '关闭',
+                    width: 60,
+                    height: 32,
+                    style: {
+                        borderColor: 'black'
+                    },
+                    itemId: 'btnclose',
+                    handler: function () {
+                        PageClose();
+                    }
+                }
+                ],
+                listeners: {
+                    afterrender: function () {
+                        this.fnAfterrender();
+                    }
+                }
+            });
+
+
+            //////////   2.速查时，触发btnfind 事件
+            //////////   3.删除时，触发btndelete 事件
+            //////////   4.保存时，触发btnsave 事件
+            //////////   5.关闭时，触发btnclose 事件
+
+
+            function monitor(url, orderParams) {
+
+            }
+
+            var viewport = Ext.create('Ext.Viewport', {
+                layout: 'border',
+                items: [gridPanel, gridBar],
+                listeners: {
+                    afterrender: function (comp, eOpts) {
+                        var me = this;
+                        var pa = window.parent ? window.parent.Ext.getCmp('tabPanel') : null;
+                        //通知上级tab 这已加载完成
+
+                        if (pa) {
+                            var thisTabComp = pa.getComponent('Prdt');
+
+                            if (thisTabComp) {
+                                thisTabComp.had_rendered = true;
+                                pa.on('SendOrder', monitor);
+                                pa.getComponent('Prdt').fireEvent('had_rendered', monitor);
+
+                                PageClose = function () {
+                                    var pa = window.parent.Ext.getCmp('tabPanel');
+                                    //通知上级tab 这已加载完成
+                                    if (pa) {
+                                        pa.getComponent('Prdt').fireEvent('letcloseme');
+                                    }
+                                } // PageClose
+
+                            }
+                        }
+                    }
+                }
+            });
+
+        });
+
+    </script>
+
+</head>
+<body>
+    <form id="form1" runat="server">
+        <div></div>
+    </form>
+</body>
+</html>

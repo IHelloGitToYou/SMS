@@ -1,0 +1,89 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title></title>
+    <link href="JS/resources/css/ext-all.css" rel="stylesheet" type="text/css" />
+    <script src="JS/ext-all-debug.js" type="text/javascript"></script>
+    
+ 
+    <script type="text/javascript">
+
+
+        Ext.onReady(function () {
+            var states = Ext.create('Ext.data.Store', {
+                fields: ['abbr', 'name'],
+                data: [
+                    { "abbr": "AL", "name": "Alabama" },
+                    { "abbr": "AK", "name": "Alaska" },
+                    { "abbr": "AZ", "name": "Arizona" }
+                ]
+            });
+ 
+            Ext.define('User', {
+                renderTo: Ext.getBody(),
+                extend: 'Ext.data.Model',
+                fields: [
+                    { name: 'no', type: 'string' },
+                    { name: 'name', type: 'string' },
+                    { name: 'age', type: 'string' }
+                ]
+            });
+
+            var myStore = Ext.create('Ext.data.Store', {
+                model: 'User',
+                proxy: {
+                    type: 'ajax',
+                    url: 'ASHX/ashx_Text.ashx',
+                    reader: {
+                        type: 'json'
+                    }
+                },
+                autoLoad: true
+            });
+
+
+            ////开始使用store. model
+            Ext.create('Ext.form.ComboBox', {
+                renderTo: Ext.getBody(),
+                fieldLabel: '静态下拉框',
+                store: states,
+                queryMode: 'local',
+                displayField: 'name',
+                valueField: 'abbr'
+            });
+
+            Ext.create('Ext.form.ComboBox', {
+                renderTo: Ext.getBody(),
+                fieldLabel: '  dong态下拉框',
+                store: myStore,
+                queryMode: 'local',
+                displayField: 'name',
+                valueField: 'no'
+            });
+
+
+            var tabBar = Ext.create('Ext.tab.Bar', {
+                uiCls:'abc',
+                rotation: 0,
+                listeners: {
+                    change: function (vtabBar, tab, card, eOpts) {
+                        document.title = tab.text + '_' + window.DBInfoName;
+                    }
+                },
+                renderTo: Ext.getBody()
+            });
+
+        });
+
+    
+    
+    
+    
+    
+    </script>
+</head>
+<body>
+
+</body>
+</html>

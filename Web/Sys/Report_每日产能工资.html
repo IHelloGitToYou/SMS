@@ -1,0 +1,459 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title></title>
+    <script type="text/javascript">
+        var PAGE_Locaction = "Sys/Report_每日产能工资.html";
+        var PageClose;
+    </script>
+
+    <link href="../JS/resources/css/ext-all.css" rel="stylesheet" type="text/css" / >
+    <script src="../JS/ext-all.js?version=2" type="text/javascript"> </script>
+    <script src="../JS/Setting/DataModel.js?version=9"></script>
+    <script src="../JS/commonJSFn.js?version=18" type="text/javascript"> </script>
+    <script src="../JS/SMSCommonJS.js?version=20" type="text/javascript"> </script>
+    <script src="../JS/SunGridHeadYAOSELF.js?version=2" type="text/javascript"> </script>
+    <script src="../JS/新SunEditor.js?version=19"></script>
+    <script src="../JS/Setting/WpConfig.js?version=13"></script>
+    <meta charset="utf-8" / >
+    <script type="text/javascript">
+     Ext.onReady(function () {
+         Ext.define('Report_Model', {
+             extend: 'Ext.data.Model',
+             fields: [
+                 { name: 'row_sort', type: 'int' },
+                 { name: 'jx_dd', type: 'date' },
+                 { name: 'worker_dep_no', type: 'string' },
+                 { name: 'worker', type: 'string' },
+                 { name: 'plan_no', type: 'string' },
+                 { name: 'prd_no', type: 'string' },
+                 { name: 'plan_all_qty_pair', type: 'number' },
+
+                 { name: 'size_qty_pair', type: 'number' },
+                 { name: 'size', type: 'string' },
+                 { name: 'wp_no', type: 'string' },
+                 { name: 'wp_name', type: 'string' },
+                 { name: 'plan_day_qty', type: 'number' },
+                 { name: 'day_qty_ut', type: 'int' },
+                 { name: 'qty_pair', type: 'number' },
+                 { name: 'edit_ut', type: 'int' },
+                 { name: 'up_pair', type: 'number' },
+                 { name: 'day_money', type: 'number' },
+                 { name: 'inscrease_percent', type: 'number' },
+                 { name: 'share_percent', type: 'number' },
+                 { name: 'inscrease_money', type: 'number' }
+             ]
+         });
+
+         var OnSearch = function () {
+             GridStore.lastSearchFormParams = SearchPanel.getValues();
+             GridStore.loadPage(1, {
+                 params: {
+
+                 },
+                 callback: function () {
+                     Ext.defer(function () { mergeCells(Grid, [2]); }, 1000);
+                 }
+             });
+         }
+
+         var SearchPanel = Ext.create('Ext.form.Panel', {
+             region: 'north',
+             title: '每日产能工资明细',
+             defaults: {
+                 labelAlign: 'right',
+                 width: 180,
+                 labelWidth: 60,
+                 margin: '5 5 5 0'
+             },
+             layout: {
+                 type: 'table',
+                 columns: 6
+             },
+             items: [{
+                 fieldLabel: '计薪日',
+                 name: 'S_jx_dd',
+                 itemId: 'S_jx_dd',
+                 xtype: 'datefield',
+                 format: 'Y/m/d',
+                 value: GlobalVar.ServerDate
+             }, {
+                 fieldLabel: '~&nbsp&nbsp至&nbsp&nbsp',
+                 name: 'E_jx_dd',
+                 itemId: 'E_jx_dd',
+                 xtype: 'datefield',
+                 format: 'Y/m/d',
+                 value: GlobalVar.ServerDate
+             }, {
+                 xtype: 'checkbox',
+                 boxLabel: '仅小计',
+                 inputValue:'true',
+                 name: 'onlySum',
+                 itemId:'onlySumId',
+                 value: false
+             }, {
+                 xtype: 'fieldcontainer',
+                 width: 300,
+                 colspan :3,
+                 items: [{
+                     margin: '6 6 6 10',
+                     text: '查&nbsp&nbsp&nbsp&nbsp询',
+                     xtype: 'button',
+                     height: 30,
+                     width: 80,
+                     handler: OnSearch
+                 }, {
+                     xtype: 'button',
+                     height: 30,
+                     text: '导出',
+                     icon: '../JS/resources/MyImages/ms_excel.png',
+                     width: 80,
+                     margin: '0 5 0 5',
+                     handler: function () {
+                         GlobalVar.ToExcel(Grid, '日工资明细');
+                         //alert('功能末实现');
+                     }
+                 }]
+             }, {
+                 fieldLabel: '员工部门',
+                 name: 'worker_dep_no',
+                 itemId: 'worker_dep_no',
+                 xtype: 'MSearch_Dept',
+                 localStoreSortByWorkerDeptNo: WpConfig.UserDefault[GlobalVar.NowUserId].user_dep_no || '000000',
+                 value: WpConfig.UserDefault[GlobalVar.NowUserId].user_dep_no || '000000'
+             }, {
+                 fieldLabel: '员工',
+                 name: 'worker',
+                 itemId: 'worker',
+                 xtype: 'MSearch_Salm',
+                 matchFieldWidth: false,
+                 forceSelection: false,
+                 localStoreSortByWorkerDeptNo: WpConfig.UserDefault[GlobalVar.NowUserId].user_dep_no || '000000',
+                 value: ''
+             }, {
+                 fieldLabel: '计划单号',
+                 name: 'plan_no',
+                 itemId: 'plan_no',
+                 xtype: 'textfield'
+             }, {
+                 fieldLabel: '货号',
+                 name: 'prd_no',
+                 itemId: 'prd_no',
+                 xtype: 'MSearch_Prdt'
+             }]
+         });
+
+         var GridStore = Ext.create('Ext.data.Store', {
+             model: 'Report_Model',
+             pageSize :500,
+             proxy: {
+                 type: 'ajax',
+                 url: commonVar.urlCDStr + 'ASHX/YG_DayMoney.ashx?action=Search',
+                 reader: {
+                     type: 'json',
+                     root: 'items',
+                     totalProperty: 'total'
+                 }
+             }
+         });
+
+         GridStore.on('beforeload', function (vStore, operation, eOpts) {
+             if (!GridStore.lastSearchFormParams)
+                 GridStore.lastSearchFormParams = SearchPanel.getValues();
+            
+
+             if (!GridStore.getProxy().extraParams)
+                 GridStore.getProxy().extraParams = {};
+
+             Ext.apply(GridStore.getProxy().extraParams, GridStore.lastSearchFormParams);
+
+             GridStore.getProxy().extraParams.onlySum = SearchPanel.getComponent('onlySumId').getValue() == true ? "true" : 'false';
+         });
+
+         var GetDigitFormat = function () {
+
+         }
+
+         var Grid = Ext.create('Ext.grid.Panel', {
+             region: 'center',
+             sortableColumns: false,
+             rowLines: true,
+             layout: 'fit',
+             store: GridStore,
+             viewConfig: {
+                 getRowClass: function (record) {
+                     var row_sort = record.get('row_sort');
+                     if (row_sort == 2 || row_sort == '2') {
+                         return 'x-updated-row';
+                     }
+                     if (row_sort == 3) {
+                         return 'x-updated-L2-row';
+                     }
+                     return '';
+                 }
+             },
+             columns: [
+                 { xtype: 'rownumberer' },
+                 {
+                     name: 'row_sort', dataIndex: 'row_sort', text: ' - ',
+                     renderer: function (v, m, rec) {
+                         if(v == 2)
+                             return '小计';
+                         else if(v == 3)
+                             return '总计';
+                         return  '';
+                     },
+                     width: 50
+                 },
+                 {
+                     name: 'jx_dd', dataIndex: 'jx_dd', text: '计薪日', xtype: 'datecolumn', format: 'Y/m/d', width: 90,
+                     renderer: function (v, m, rec) {
+                         if (rec.get('row_sort') == 3)
+                             return '';
+                         else
+                             return Ext.util.Format.date(v, 'Y/m/d');
+                     }
+                  },
+                 { name: 'worker_dep_no', dataIndex: 'worker_dep_no', text: '生产部', renderer: GlobalVar.rdDeptName, width: 90 },
+                 { name: 'worker', dataIndex: 'worker', text: '员工', renderer: GlobalVar.rdSalmName, width: 90 },
+                 { name: 'plan_no', dataIndex: 'plan_no', text: '计划单', width: 100 },
+                 {
+                     name: 'prd_no', dataIndex: 'prd_no', text: '货品', renderer: function (v) {
+                         if (v == '计时')
+                             return '计时';
+                         else
+                            return GlobalVar.rdPrdtName(v);
+                     },
+                     width: 120
+                 },
+                {
+                    name: 'plan_all_qty_pair', dataIndex: 'plan_all_qty_pair', text: '尺寸总计划(对)',
+                    align: 'right',
+                    renderer: function (v, m, rec) {
+                        if (!v)
+                            return '';
+                        return Ext.util.Format.number(v, '0');
+                    }, width: 120
+                },
+                { name: 'size', dataIndex: 'size', text: '尺寸', width: 80 },
+                {
+                    name: 'size_qty_pair', dataIndex: 'size_qty_pair', text: '尺寸计划(对)',
+                      align: 'right',
+                      renderer: function (v, m, rec) {
+                          if (!v)
+                              return '';
+                          return v;//Ext.util.Format.number(v, '0.00');
+                      }, width: 100
+                 },
+                 { name: 'wp_name', dataIndex: 'wp_name', text: '部位', width: 180 },
+                 {
+                     name: 'plan_day_qty', dataIndex: 'plan_day_qty', text: '计划日产能(对)',
+                     align: 'right',
+                     renderer: function (v, m, rec) {
+                         if (!v)
+                             return '';
+                         return v;//+ '&nbsp&nbsp/' + (rec.get('day_qty_ut') == 1 ? '对' : '个');
+                     },
+                     width: 110
+                 },
+                 {
+                     name: 'qty_pair', dataIndex: 'qty_pair', text: '实际生产(对)',
+                     align: 'right',
+                     renderer: function (v, m, rec) {
+                         if (!v)
+                             return '';
+                         var formatStr = (rec.get('edit_ut') == 1 ? '0.00' : '0.0');
+                         var formUT = '';
+                         if (rec.get('prd_no') == '计时')
+                             return v + '&nbsp时';
+                         else{
+                             //formUT = rec.get('edit_ut') == 1 ? ' 对' : ' 个';
+                             return v;
+                         }
+                         return Ext.util.Format.number(v, formatStr) + '&nbsp&nbsp' +formUT;
+                     },
+                     width: 100
+                 },
+                 {
+                     name: 'up_pair', dataIndex: 'up_pair', text: '加工单价(对)',
+                     align: 'right',
+                     renderer: function (v, m, rec) {
+                         if (!v)
+                             return '';
+                         var formUT = '';
+                         if (rec.get('prd_no') == '计时')
+                             return v + '&nbsp时';//formUT = '小时';
+                         else 
+                             return v;// + '/' + formUT; formUT = rec.get('edit_ut') == 1 ? ' 对' : ' 个';
+                         
+                         
+                     }, width: 110
+                 },
+                {
+                    text: '分成', name: 'share_percent', dataIndex: 'share_percent', width: 100,
+                    sortable: false,
+                    renderer: function (v, m, rec) {
+                        return v + '%';
+                    }
+                },
+                 {
+                     name: 'day_money', dataIndex: 'day_money', text: '加工工资(元)',
+                     align: 'right',
+                     renderer: function (v, m, rec) {
+                         if (!v)
+                             return '';
+                         if (rec.get('row_sort') == 2)
+                             return '小计: ' + Ext.util.Format.number(v, '0.00');
+                         if (rec.get('row_sort') == 3)
+                             return '共计: ' + Ext.util.Format.number(v, '0.00');
+                         else
+                             return v;//Ext.util.Format.number(v, '0.000');
+                     }, width: 110
+                 },
+                 {
+                     text: '加翻率', name: 'inscrease_percent', dataIndex: 'inscrease_percent', width: 100,
+                     sortable: false,
+                     renderer: function (v, m, rec) {
+                         if (!v)
+                             return '';
+
+                         return v + '%';
+                     }
+                 },
+                 //{
+                 //    text: '加翻工资', name: 'inscrease_money', dataIndex: 'inscrease_money', width: 100,
+                 //    sortable: false,
+                 //    renderer: function (v, m, rec) {
+                 //        if (!v)
+                 //            return '';
+
+                 //        if (rec.get('row_sort') == 2)
+                 //            return '小计: ' + Ext.util.Format.number(v, '0.00');
+                 //        if (rec.get('row_sort') == 3)
+                 //            return '共计: ' + Ext.util.Format.number(v, '0.00');
+                 //        else
+                 //            return v;//Ext.util.Format.number(v, '0.000');
+                 //    }
+                 //},
+                 {
+                     text: '加翻后工资', name: 'inscrease_money2',  width: 100,
+                     sortable: false,
+                     renderer: function (v, m, rec) {
+                         var amt = rec.get('day_money') + rec.get('inscrease_money');
+
+                         if (!amt)
+                             return '';
+                         if (rec.get('row_sort') == 2)
+                             return '小计: ' + Ext.util.Format.number(amt, '0.00');
+                         if (rec.get('row_sort') == 3)
+                             return '共计: ' + Ext.util.Format.number(amt, '0.00');
+                         else
+                             return amt;//Ext.util.Format.number(v, '0.000');
+                     }
+                 }
+             ],
+             dockedItems: [{
+                 xtype: 'pagingtoolbar',
+                 store: GridStore,
+                 dock: 'bottom',
+                 displayInfo: true
+             }]
+         });
+         // select 2 as row_sort, jx_dd, worker_dep_no, worker, '' as plan_no, '' as prd_no, 0 as  plan_all_qty_pair,
+         //       0 as size_qty_pair, '' as size, '' as wp_no , '' as wp_name, 0 as plan_day_qty, 0 as day_qty_ut,
+         //       0 as qty_pair, 0 as edit_ut, 0 as up_pair, sum(day_money) as day_money
+         // from #DayDetail
+         // group by jx_dd, worker_dep_no, worker
+
+         function monitor() { }
+         var viewport = Ext.create('Ext.Viewport', {
+             layout: 'border',
+             items: [SearchPanel, Grid],
+             listeners: {
+                 afterrender: function (comp, eOpts) {
+                     var me = this;
+                     var pa = window.parent ? window.parent.Ext.getCmp('tabPanel') : null;
+                     if (pa) {
+                         var thisTabComp = pa.getComponent('Report_每日产能工资');
+
+                         if (thisTabComp) {
+                             thisTabComp.had_rendered = true;
+                             pa.on('SendOrder', monitor);
+                             pa.getComponent('Report_每日产能工资').fireEvent('had_rendered', monitor);
+                             PageClose = function () {
+                                 var pa = window.parent.Ext.getCmp('tabPanel');
+                                 if (pa) {
+                                     pa.getComponent('Report_每日产能工资').fireEvent('letcloseme');
+                                 }
+                             }
+                         }
+                     }
+                 }
+             }
+         });
+
+         function mergeCells(grid, cols) {
+             var arrayTr = document.getElementById(grid.getId() + "-body").firstChild.firstChild.firstChild.getElementsByTagName('tr');
+             var trCount = arrayTr.length;
+             var arrayTd;
+             var td;
+             var merge = function (rowspanObj, removeObjs) { //定义合并函数
+                 if (rowspanObj.rowspan != 1) {
+                     arrayTd = arrayTr[rowspanObj.tr].getElementsByTagName("td"); //合并行
+                     td = arrayTd[rowspanObj.td - 1];
+                     td.rowSpan = rowspanObj.rowspan;
+                     td.vAlign = "middle";
+                     Ext.each(removeObjs, function (obj) { //隐身被合并的单元格
+                         arrayTd = arrayTr[obj.tr].getElementsByTagName("td");
+                         arrayTd[obj.td - 1].style.display = 'none';
+                     });
+                 }
+             };
+             var rowspanObj = {}; //要进行跨列操作的td对象{tr:1,td:2,rowspan:5}
+             var removeObjs = []; //要进行删除的td对象[{tr:2,td:2},{tr:3,td:2}]
+             var col;
+             Ext.each(cols, function (colIndex) { //逐列去操作tr
+                 var rowspan = 1;
+                 var divHtml = null;//单元格内的数值
+                 for (var i = 1; i < trCount; i++) {  //i=0表示表头等没用的行
+                     arrayTd = arrayTr[i].getElementsByTagName("td");
+                     var cold = 0;
+                     col = colIndex + cold;//跳过RowNumber列和check列
+                     if (!divHtml) {
+                         divHtml = arrayTd[col - 1].innerHTML;
+                         rowspanObj = { tr: i, td: col, rowspan: rowspan }
+                     } else {
+                         var cellText = arrayTd[col - 1].innerHTML;
+                         var addf = function () {
+                             rowspanObj["rowspan"] = rowspanObj["rowspan"] + 1;
+                             removeObjs.push({ tr: i, td: col });
+                             if (i == trCount - 1)
+                                 merge(rowspanObj, removeObjs);//执行合并函数
+                         };
+                         var mergef = function () {
+                             merge(rowspanObj, removeObjs);//执行合并函数
+                             divHtml = cellText;
+                             rowspanObj = { tr: i, td: col, rowspan: rowspan }
+                             removeObjs = [];
+                         };
+                         if (cellText == divHtml) {
+                             if (colIndex != cols[0]) {
+                                 var leftDisplay = arrayTd[col - 2].style.display;//判断左边单元格值是否已display
+                                 if (leftDisplay == 'none')
+                                     addf();
+                                 else
+                                     mergef();
+                             } else
+                                 addf();
+                         } else
+                             mergef();
+                     }
+                 }
+             });
+         };
+     });
+    </script>
+</head>
+<body>
+</body>
+</html>

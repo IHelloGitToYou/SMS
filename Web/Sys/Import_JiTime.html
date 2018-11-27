@@ -1,0 +1,96 @@
+﻿<!DOCTYPE html>
+<html>
+<head runat="server">
+    <title>计时数据录入</title>
+    <script type="text/javascript">
+        var sPanel, cPanel,  nPanel;
+        var PAGE_Locaction = "Sys/Import_JiTime.html";
+        var PageClose;
+
+    </script>
+    <style type="text/css">
+        .disabledRow .x-grid-cell {
+            background-color: Gray;
+            color: White;
+        }
+    </style>
+    <link href="../JS/resources/ext-theme-neptune/ext-theme-neptune-all.css" rel="stylesheet" type="text/css" />
+    <script src="../JS/ext-all.js" type="text/javascript"></script>
+    <script src="../JS/Setting/DataModel.js?version=9"></script>
+
+    <script src="../JS/SMSCommonJS.js?version=20" type="text/javascript"></script>
+    <script src="../JS/commonJSFn.js?version=18" type="text/javascript"></script>
+
+    <script src="../JS/SunGridHeadYAOSELF.js?version=2" type="text/javascript"></script>
+    <script src="../JS/GridTool.js?version=2" type="text/javascript"></script>
+
+    <!--<script src="../JS/Setting/SearchSySBox.js" type="text/javascript"></script>-->
+    <script src="../JS/新SunEditor.js?version=19" type="text/javascript"></script>
+
+    <script src="../JS/Setting/WpConfig.js?version=13"></script>
+    
+
+    <script src="../JS/Setting/JsQty_Setting.js" type="text/javascript"></script>
+
+    <script type="text/javascript">
+
+    Ext.onReady(function(){
+
+        function monitor(url, orderParams) {
+            if (url == PAGE_Locaction && orderParams) {
+                var action = (orderParams.action || '');
+                if (action == 'ViewTable') {
+                    var no = orderParams.no;
+                    fnGetAnTable(no);
+                }
+            }
+        }
+
+		var viewport = Ext.create('Ext.Viewport', {
+		    margins:'0 0 0 0',
+		    layout: 'border',
+		    items: [
+			    nPanel,cPanel, sPanel
+		    ],
+		    listeners:{
+			    afterrender : function(){
+			        fnCommonCreateLastNo('JS', nPanel.getComponent('js_no'), function(){
+
+                    });
+
+                    var me = this;
+                    var pa = window.parent ? window.parent.Ext.getCmp('tabPanel') : null;
+                    //通知上级tab 这已加载完成
+
+                    if (pa) {
+                        var thisTabComp = pa.getComponent('Import_JiTime');
+                        if (thisTabComp) {
+                            thisTabComp.had_rendered = true;
+                            pa.on('SendOrder', monitor);
+                            pa.getComponent('Import_JiTime').fireEvent('had_rendered', monitor);
+
+                            PageClose = function() {
+                                var pa = window.parent.Ext.getCmp('tabPanel');
+                                //通知上级tab 这已加载完成
+                                if (pa) {
+                                    pa.getComponent('Import_JiTime').fireEvent('letcloseme');
+                                }
+                            } // PageClose
+
+                        }
+                    }
+
+			    }
+		    }
+	    });
+
+    });
+
+    </script>
+</head>
+<body>
+    <form id="form1" runat="server">
+        <div></div>
+    </form>
+</body>
+</html>

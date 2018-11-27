@@ -1,0 +1,73 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 14
+VisualStudioVersion = 14.0.25123.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Model", "Model\Model.csproj", "{BE60267C-99BB-44FA-89AB-4C68D7EC6E3A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dal", "DAL\Dal.csproj", "{C1105D40-44EB-4BC3-8298-C8C64DB4326F}"
+	ProjectSection(ProjectDependencies) = postProject
+		{BE60267C-99BB-44FA-89AB-4C68D7EC6E3A} = {BE60267C-99BB-44FA-89AB-4C68D7EC6E3A}
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bus", "Bus\Bus.csproj", "{30F0AABD-5DA2-4A5E-A9BD-99131A5ADEF1}"
+	ProjectSection(ProjectDependencies) = postProject
+		{C1105D40-44EB-4BC3-8298-C8C64DB4326F} = {C1105D40-44EB-4BC3-8298-C8C64DB4326F}
+		{BE60267C-99BB-44FA-89AB-4C68D7EC6E3A} = {BE60267C-99BB-44FA-89AB-4C68D7EC6E3A}
+	EndProjectSection
+EndProject
+Project("{E24C65DC-7377-472B-9ABA-BC803B73C61A}") = "Web", "Web\", "{74F3BFD2-4F9F-45D8-8BE1-1E6E0AFD4991}"
+	ProjectSection(WebsiteProperties) = preProject
+		TargetFrameworkMoniker = ".NETFramework,Version%3Dv4.0"
+		ProjectReferences = "{BE60267C-99BB-44FA-89AB-4C68D7EC6E3A}|Model.dll;{C1105D40-44EB-4BC3-8298-C8C64DB4326F}|DAL.dll;{30F0AABD-5DA2-4A5E-A9BD-99131A5ADEF1}|Bus.dll;"
+		Debug.AspNetCompiler.VirtualPath = "/Web"
+		Debug.AspNetCompiler.PhysicalPath = "Web\"
+		Debug.AspNetCompiler.TargetPath = "PrecompiledWeb\Web\"
+		Debug.AspNetCompiler.Updateable = "false"
+		Debug.AspNetCompiler.ForceOverwrite = "true"
+		Debug.AspNetCompiler.FixedNames = "false"
+		Debug.AspNetCompiler.Debug = "True"
+		Release.AspNetCompiler.VirtualPath = "/Web"
+		Release.AspNetCompiler.PhysicalPath = "Web\"
+		Release.AspNetCompiler.TargetPath = "PrecompiledWeb\Web\"
+		Release.AspNetCompiler.Updateable = "false"
+		Release.AspNetCompiler.ForceOverwrite = "true"
+		Release.AspNetCompiler.FixedNames = "false"
+		Release.AspNetCompiler.Debug = "False"
+		VWDPort = "15178"
+		SlnRelativePath = "Web\"
+		DefaultWebSiteLanguage = "Visual C#"
+	EndProjectSection
+	ProjectSection(ProjectDependencies) = postProject
+		{BE60267C-99BB-44FA-89AB-4C68D7EC6E3A} = {BE60267C-99BB-44FA-89AB-4C68D7EC6E3A}
+		{30F0AABD-5DA2-4A5E-A9BD-99131A5ADEF1} = {30F0AABD-5DA2-4A5E-A9BD-99131A5ADEF1}
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+		Description = 
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{BE60267C-99BB-44FA-89AB-4C68D7EC6E3A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BE60267C-99BB-44FA-89AB-4C68D7EC6E3A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BE60267C-99BB-44FA-89AB-4C68D7EC6E3A}.Release|Any CPU.ActiveCfg = Debug|Any CPU
+		{BE60267C-99BB-44FA-89AB-4C68D7EC6E3A}.Release|Any CPU.Build.0 = Debug|Any CPU
+		{C1105D40-44EB-4BC3-8298-C8C64DB4326F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C1105D40-44EB-4BC3-8298-C8C64DB4326F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C1105D40-44EB-4BC3-8298-C8C64DB4326F}.Release|Any CPU.ActiveCfg = Debug|Any CPU
+		{C1105D40-44EB-4BC3-8298-C8C64DB4326F}.Release|Any CPU.Build.0 = Debug|Any CPU
+		{30F0AABD-5DA2-4A5E-A9BD-99131A5ADEF1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{30F0AABD-5DA2-4A5E-A9BD-99131A5ADEF1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{30F0AABD-5DA2-4A5E-A9BD-99131A5ADEF1}.Release|Any CPU.ActiveCfg = Debug|Any CPU
+		{30F0AABD-5DA2-4A5E-A9BD-99131A5ADEF1}.Release|Any CPU.Build.0 = Debug|Any CPU
+		{74F3BFD2-4F9F-45D8-8BE1-1E6E0AFD4991}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{74F3BFD2-4F9F-45D8-8BE1-1E6E0AFD4991}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{74F3BFD2-4F9F-45D8-8BE1-1E6E0AFD4991}.Release|Any CPU.ActiveCfg = Debug|Any CPU
+		{74F3BFD2-4F9F-45D8-8BE1-1E6E0AFD4991}.Release|Any CPU.Build.0 = Debug|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

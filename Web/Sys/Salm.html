@@ -1,0 +1,384 @@
+﻿<!DOCTYPE html>
+<html>
+<head runat="server">
+    <title>员工设置</title>
+    <script type="text/javascript">
+            var PAGE_Locaction = "Sys/Salm.html";
+            var PageClose;
+            var ActiveRecord;
+            var BigForm;
+    </script>
+
+    <link href="../JS/resources/css/ext-all.css" rel="stylesheet" type="text/css" />
+    <script src="../JS/ext-all.js" type="text/javascript"></script>
+
+    <script src="../JS/Setting/DataModel.js?version=9"></script>
+
+    <script src="../JS/SMSCommonJS.js?version=20" type="text/javascript"></script>
+    <script src="../JS/commonJSFn.js?version=18" type="text/javascript"></script>
+    <script src="../JS/SunGridHeadYAOSELF.js?version=2" type="text/javascript"></script>
+    <script src="../JS/新SunEditor.js?version=19" type="text/javascript"></script>
+
+    <script src="../JS/Setting/Salm_Setting.js?version=2" type="text/javascript"></script>
+    <script src="../JS/Setting/WpConfig.js?version=13"></script>
+    <script type="text/javascript">
+//        user_no	varchar(40)
+//        name	varchar(20)
+//        dep_no	varchar(40)
+//        in_dd	datetime
+//        out_dd	datetime
+//        type	varchar(2)
+//        contact	varchar(200)
+//        rem	ntext
+//        n_man	varchar(40)
+//        n_dd	datetime
+//        e_man	varchar(40)
+//        e_dd	datetime
+
+        // form
+
+        Ext.onReady(function () {
+            var grid, store;
+            var ashxUrl = '../ASHX/SALM.ashx';
+
+            var gridPanel = Ext.create('SalmSet.SalmGrid', {
+                region: 'center',
+                listeners: {
+                    MyRender: function () {
+                        var Me = this;
+                        store = Me.store;
+                        grid = Me.grid;
+                        Me.grid.on('itemclick', function (view, record, item, index, e, eOpts) {
+                            if (showWin.isVisible() === false)
+                                return true;
+
+                            ActiveRecord = record;
+
+                            form.loadRecord(record);
+                            form.state = 'view';
+                            form.onViewState();
+                            form.user_no = record.get('user_no');
+                        });
+
+                        Me.grid.on('itemdblclick', function (view, record, item, index, e, eOpts) {
+                            if (showWin.isVisible() === true)
+                                return true;
+                            showWin.show();
+
+                            Me.grid.fireEvent('itemclick', view, record, item, index, e, eOpts);
+                        });
+
+                        store.proxy.url = ashxUrl;
+                        //保存上一个查询参数
+                        store.on('beforeload', function (vstore, operation, eOpts) {
+                            // // console.log(operation.params);
+                            if (!operation.params)
+                                store.proxy.extraParams = store.lastParams;
+                            else
+                                store.lastParams = operation.params;
+                        });
+
+                        store.load({
+                            params: { action: 'GETDATA', sqlWhere: '', IsShowOut:false }
+                        });
+                    }
+                }
+            });
+
+            var form = BigForm = Ext.create('SalmFormClass', {
+                //layout: 'anchor',
+                //height: 150,
+                //          width : 600,
+                //renderTo: Ext.getBody()
+            });
+
+
+            var showWin = Ext.create('Ext.window.Window', {
+                title: '员工资料',
+                closeAction: 'hide',
+                height: 200,
+                // width: 400,
+                layout: 'fit',
+                items: [
+                    form
+                ],
+                listeners: {
+                    show: function () {
+                        gridBar.btnsave.setDisabled(false);
+                        gridBar.btndelete.setDisabled(false);
+                    },
+                    close: function () {
+                        gridBar.btnsave.setDisabled(true);
+                        gridBar.btndelete.setDisabled(true);
+                    }
+                }
+            });
+
+            //////////   2.速查时，触发btnfind 事件
+            //////////   3.删除时，触发btndelete 事件
+            //////////   4.保存时，触发btnsave 事件
+            //////////   5.关闭时，触发btnclose 事件
+            var gridBar = Ext.create('Ext.toolbar.Toolbar', {
+                region: 'south',
+                fnAfterrender: function () {
+                    this.btnnew = this.getComponent('btnnew');
+                    this.btnfind = this.getComponent('btnfind');
+                    this.btndelete = this.getComponent('btndelete');
+                    this.btnsave = this.getComponent('btnsave');
+                    this.btnclose = this.getComponent('btnclose');
+
+
+                    gridBar.btnsave.setDisabled(true);
+                    gridBar.btndelete.setDisabled(true);
+                },
+                items: ['-', {
+                    text: '新增',
+                    width: 60,
+                    height: 32,
+                    style: {
+                        borderColor: 'black'
+                    },
+
+                    itemId: 'btnnew',
+                    handler: function () {
+                        form.getForm().reset();
+                        form.state = 'new';
+                        form.onNewState();
+                        form.user_no = '';
+                        showWin.show();
+
+                        var newIngRec;
+                        for (var i = 0; i < store.getCount(); ++i) {
+                            if (store.getAt(i).get('record_state') == -1) {
+                                newIngRec = store.getAt(i);
+                                break;
+                            }
+                        }
+                        if (newIngRec)
+                            ActiveRecord = newIngRec;
+                        else
+                            ActiveRecord = store.add(Ext.create('Model_Salm', {record_state: -1}))[0];
+                        //                        ActiveRecord.beginEdit();
+                        //                        ActiveRecord.set('dep_no', depEd.HiddenValue);
+                        //                        ActiveRecord.set('dep_name', depEd.RawValue);
+                        //                        form.updateRecord(ActiveRecord);
+                        //                        ActiveRecord.endEdit();
+
+                        grid.getSelectionModel().select([ActiveRecord]);
+                    }
+
+                }, '-', {
+                    text: '速查',
+                    width: 60,
+                    height: 32,
+                    style: {
+                        borderColor: 'black'
+                    },
+                    SearchAction: 'sqlWhere',
+                    name: 'btnfind',
+                    itemId: 'btnfind',
+                    icon: '../JS/resources/MyIcon/search.png',
+                    xtype: 'SunSearchWin_B',
+                    pageId: 'custInfo',
+                    btnId: 'custBtn',
+                    cellColoumns: [
+                            { myXtype: 'textfield', mySqlName: 'dep_no', myText: '部门代号', myBoxType: 'B', hidden: false },
+                            { myXtype: 'textfield', mySqlName: 'name', myText: '员工名称', myBoxType: 'B', hidden: false },
+                            { myXtype: 'textfield', mySqlName: 'user_no', myText: '员工代号', myBoxType: 'B', hidden: false }
+                    ],
+                    listeners: {
+                        searchClickEvent: function (sql) {
+                            store.lastSql = sql;
+
+                            var IsShowOut = false;
+                            if (gridBar.getComponent('IsShowOut').getValue()) {
+                                IsShowOut = true;
+                            }
+                             
+                            store.load({
+                                params: { 'sqlWhere': store.lastSql, IsShowOut:IsShowOut, 'action': 'GETDATA', NowUserId: GlobalVar.NowUserId },
+                                scope: this, callback: function (records, operation, success) { }
+                            });
+                        }
+                    }
+                }, '-', {
+                    text: '删除',
+                    width: 60,
+                    height: 32,
+                    style: {
+                        borderColor: 'black'
+                    },
+                    itemId: 'btndelete',
+                    handler: function () {
+                        var isAdminRoot = WpConfig.UserDefault[GlobalVar.NowUserId].root == '管理员';
+                        if (isAdminRoot == false) {
+                            alert('你没有权限删除!');
+                            return;
+                        }
+
+                        Ext.MessageBox.confirm('询问？', '确定要删除代号为' + String(form.user_no) + ' 员工代号吗?',
+                        function (btn) {
+                            if (btn == 'yes') {
+                                //新建末保存前，删除
+                                if (form.user_no == '') {
+                                    form.getForm().reset();
+                                    return false;
+                                }
+                                Ext.Ajax.request({
+                                    url: ashxUrl,
+                                    params: {
+                                        action: 'Delete',
+                                        user_no: form.user_no
+                                    },
+                                    success: function (response) {
+                                        var json = Ext.JSON.decode(response.responseText);
+                                        if (json.result == true) {
+                                            CommMsgShow("温馨提示：", "操作成功！");
+                                            showWin.close();
+                                            form.state = 'new';
+                                            form.user_no = '';
+                                            store.remove(ActiveRecord);
+
+                                            GlobalVar.RefreshData('SALM');
+                                        }
+                                        else {
+                                            CommMsgShow("异常：", unescape(json.msg));
+                                        }
+
+                                    },
+                                    failure: function (form, action) {
+                                        CommMsgShow("温馨提示：", action.response.statusText);
+                                    }
+                                });
+                            }
+                        }
+                    );
+                    }
+                }, '-', {
+                    text: '保存',
+                    width: 60,
+                    height: 32,
+                    style: {
+                        borderColor: 'black'
+                    },
+                    itemId: 'btnsave',
+                    handler: function () {
+                        var isAdminRoot = WpConfig.UserDefault[GlobalVar.NowUserId].root == '管理员';
+                        if (isAdminRoot == false) {
+                            alert('你没有权限保存!');
+                            return;
+                        }
+
+                        form.getForm().submit({
+                            url: ashxUrl,
+                            params: {
+                                action: form.state == 'new' ? 'new' : 'update',
+                                n_man: GlobalVar.NowUserId
+                            },
+                            success: function (form, action) {
+                                var json = action.result; // Ext.JSON.decode(action.result);
+                                if (json.result == true) {
+
+                                    ActiveRecord.beginEdit();
+                                    form.updateRecord(ActiveRecord);
+                                    ActiveRecord.endEdit();
+                                    showWin.close();
+
+                                    GlobalVar.RefreshData('SALM');
+                                }
+                                else {
+                                    CommMsgShow("异常：", json.msg, true);
+                                }
+                            },
+                            failure: function (form, action) {
+                                CommMsgShow("异常：", action.responseText, true);
+                            }
+                        });
+                    }
+                }, '-', {
+                    text: '关闭',
+                    width: 60,
+                    height: 32,
+                    style: {
+                        borderColor: 'black'
+                    },
+                    itemId: 'btnclose',
+                    handler: function () {
+                        PageClose();
+                    }
+                }, '->', {
+                    xtype: 'checkbox',
+                    boxLabel: '显示离职员工',
+                    itemId:'IsShowOut',
+                    name: 'IsShowOut',
+                    inputValue: 'IsShowOut',
+                    checked: false
+                }, {
+                    text: '更新员工排序',
+                    width: 100,
+                    height: 32,
+                    style: {
+                        borderColor: 'black'
+                    },
+                    itemId: 'btnsort',
+                    handler: function () {
+
+                        if (!grid.sortWin)
+                            grid.sortWin = SalmSet.createSortWin();
+
+                        grid.sortWin.show();
+                    }
+                }],
+                listeners: {
+                    afterrender: function () {
+                        this.fnAfterrender();
+                    }
+                }
+            });
+
+            function monitor(url, orderParams) {
+
+            }
+
+            var viewport = Ext.create('Ext.Viewport', {
+                layout: 'border',
+                items: [gridPanel, gridBar],
+                listeners: {
+                    afterrender: function (comp, eOpts) {
+                        var me = this;
+                        var pa = window.parent ? window.parent.Ext.getCmp('tabPanel') : null;
+                        //通知上级tab 这已加载完成
+
+                        if (pa) {
+                            var thisTabComp = pa.getComponent('Salm');
+
+                            if (thisTabComp) {
+                                thisTabComp.had_rendered = true;
+                                pa.on('SendOrder', monitor);
+                                pa.getComponent('Salm').fireEvent('had_rendered', monitor);
+
+                                PageClose = function () {
+                                    var pa = window.parent.Ext.getCmp('tabPanel');
+                                    //通知上级tab 这已加载完成
+                                    if (pa) {
+                                        pa.getComponent('Salm').fireEvent('letcloseme');
+                                    }
+                                } // PageClose
+
+                            }
+                        }
+                    }
+                }
+            });
+
+        });
+
+    </script>
+
+</head>
+<body>
+    <form id="form1" runat="server">
+        <div></div>
+    </form>
+</body>
+</html>

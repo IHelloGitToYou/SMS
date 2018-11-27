@@ -1,0 +1,55 @@
+﻿ 
+.x-new-row .x-grid-cell { 
+    background-color:#BBE643;
+    color: #900; 
+} 
+
+.x-updated-row .x-grid-cell { 
+    background-color: #e2ffe2; 
+    color: #090; 
+}
+
+.x-updated-L2-row .x-grid-cell { 
+    background-color: #ffff33; 
+    color: red; 
+    font-weight:bold;
+}
+
+.x-deleted-row .x-grid-cell { 
+    background-color:#E6E6E6; 
+    color : White; 
+    font-style:italic;
+}
+
+.x-grid-row .disabled_column { 
+    background-color:#E6E6E6; 
+    
+}
+ 
+
+.salm_out{
+    background-color:Gray; 
+    backgroundColor:Gray; 
+
+    color: Gray; 
+}
+
+
+.x-StopUse-row .x-grid-cell { 
+    text-decoration:line-through
+}
+
+
+.x-form-readonly .x-form-text  { background-color:#E6E6E6;}
+
+.x-window-default {
+    border-width: 1px;
+}
+
+
+.x-grid-row .yellowRow{
+    background-color:Yellow; 
+    backgroundColor:Yellow; 
+
+    color: Gray; 
+}

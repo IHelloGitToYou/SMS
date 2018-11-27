@@ -1,0 +1,350 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title></title>
+    <script type="text/javascript">
+        var PAGE_Locaction = "Sys/Report_工资分析.html";
+        var PageClose;
+    </script>
+
+    <link href="../JS/resources/css/ext-all.css" rel="stylesheet" type="text/css" / >
+    <script src="../JS/ext-all.js?version=2" type="text/javascript"> </script>
+    <script src="../JS/Setting/DataModel.js?version=9"></script>
+    <script src="../JS/commonJSFn.js?version=18" type="text/javascript"> </script>
+    <script src="../JS/SMSCommonJS.js?version=20" type="text/javascript"> </script>
+    <script src="../JS/SunGridHeadYAOSELF.js?version=2" type="text/javascript"> </script>
+    <script src="../JS/新SunEditor.js?version=19"></script>
+    <script src="../JS/Setting/WpConfig.js?version=13"></script>
+    <meta charset="utf-8" / >
+    <script type="text/javascript">
+        Ext.onReady(function () {
+            Ext.define('Report_Model', {
+                extend: 'Ext.data.Model',
+                fields: [
+                    { name: 'row_sort', type: 'int' },
+                    //部门
+                    //员工
+                    //工资
+                    //加翻工资
+                    //上班天数
+                    //平均日薪
+                    { name: 'worker_dep_no', type: 'string' },
+                    { name: 'worker', type: 'string' },
+
+                    { name: 'range_money', type: 'number' },
+                    { name: 'inscrease_range_money', type: 'number' },
+                    { name: 'work_day', type: 'number' },
+                    { name: 'day_money', type: 'number' },
+                    { name: 'day_money2', type: 'number' }
+                ]
+            });
+
+            var OnSearch = function () {
+                GridStore.lastSearchFormParams = SearchPanel.getValues();
+                GridStore.loadPage(1, {
+                    params: {
+
+                    },
+                    callback: function () {
+                        Ext.defer(function () { mergeCells(Grid, [2]); }, 1000);
+                    }
+                });
+            }
+
+            var SearchPanel = Ext.create('Ext.form.Panel', {
+                region: 'north',
+                defaults: {
+                    labelAlign: 'right',
+                    width: 180,
+                    labelWidth: 60,
+                    margin: '5 5 5 0'
+                },
+                layout: {
+                    type: 'table',
+                    columns: 6
+                },
+                items: [{
+                    fieldLabel: '计薪日',
+                    name: 'S_jx_dd',
+                    itemId: 'S_jx_dd',
+                    xtype: 'datefield',
+                    format: 'Y/m/d',
+                    value: GlobalVar.MouthFirstDay
+                }, {
+                    fieldLabel: '~&nbsp&nbsp至&nbsp&nbsp',
+                    name: 'E_jx_dd',
+                    itemId: 'E_jx_dd',
+                    xtype: 'datefield',
+                    format: 'Y/m/d',
+                    value: GlobalVar.MouthLastDay
+                }, {
+                    fieldLabel: '员工部门',
+                    name: 'worker_dep_no',
+                    itemId: 'worker_dep_no',
+                    xtype: 'MSearch_Dept',
+                    localStoreSortByWorkerDeptNo: WpConfig.UserDefault[GlobalVar.NowUserId].user_dep_no || '000000',
+                    value: WpConfig.UserDefault[GlobalVar.NowUserId].user_dep_no || '000000'
+                }, {
+                    fieldLabel: '员工',
+                    name: 'worker',
+                    itemId: 'worker',
+                    xtype: 'MSearch_Salm',
+                    matchFieldWidth: false,
+                    forceSelection: false,
+                    localStoreSortByWorkerDeptNo: WpConfig.UserDefault[GlobalVar.NowUserId].user_dep_no || '000000',
+                    value: ''
+                }, {
+                    xtype: 'checkbox',
+                    boxLabel: '仅部门小计',
+                    inputValue: 'true',
+                    name: 'onlySum',
+                    itemId: 'onlySumId',
+                    value: false
+                }, {
+                    xtype: 'fieldcontainer',
+                    width: 300,
+                    items: [{
+                        margin: '6 6 6 10',
+                        text: '查&nbsp&nbsp&nbsp&nbsp询',
+                        xtype: 'button',
+                        height: 30,
+                        width: 80,
+                        handler: OnSearch
+                    }, {
+                        xtype: 'button',
+                        height: 30,
+                        text: '导出',
+                        icon: '../JS/resources/MyImages/ms_excel.png',
+                        width: 80,
+                        margin: '0 5 0 5',
+                        handler: function () {
+                            GlobalVar.ToExcel(Grid, '工资分析');
+                            //alert('功能末实现');
+                        }
+                    }]
+                }]
+            });
+
+            var GridStore = Ext.create('Ext.data.Store', {
+                model: 'Report_Model',
+                pageSize: 300,
+                proxy: {
+                    type: 'ajax',
+                    url: commonVar.urlCDStr + 'ASHX/YG_DayMoney.ashx?action=SearcInSumView',
+                    reader: {
+                        type: 'json',
+                        root: 'items',
+                        totalProperty: 'total'
+                    }
+                }
+            });
+
+            GridStore.on('beforeload', function (vStore, operation, eOpts) {
+                if (!GridStore.lastSearchFormParams)
+                    GridStore.lastSearchFormParams = SearchPanel.getValues();
+
+                if (!GridStore.getProxy().extraParams)
+                    GridStore.getProxy().extraParams = {};
+
+                Ext.apply(GridStore.getProxy().extraParams, GridStore.lastSearchFormParams);
+
+                GridStore.getProxy().extraParams.onlySum = SearchPanel.getComponent('onlySumId').getValue() == true ? "true" : 'false';
+            });
+
+            var GetDigitFormat = function () {
+
+            }
+
+            var Grid = Ext.create('Ext.grid.Panel', {
+                region: 'center',
+                //sortableColumns: false,
+                layout: 'fit',
+                store: GridStore,
+                viewConfig: {
+                    getRowClass: function (record) {
+                        var row_sort = record.get('row_sort');
+                        if (row_sort == 2 || row_sort == '2') {
+                            return 'x-updated-row';
+                        }
+                        if (row_sort == 3) {
+                            return 'x-updated-L2-row';
+                        }
+                        return '';
+                    }
+                },
+                columns: [
+                    { xtype: 'rownumberer' },
+                    {
+                        name: 'row_sort', dataIndex: 'row_sort', text: ' - ',
+                        renderer: function (v, m, rec) {
+                            return v == 2 ? '小计' : '';
+                        },
+                        width: 60,
+                        hidden:true
+                    },
+                    { name: 'worker_dep_no', dataIndex: 'worker_dep_no', text: '生产部', renderer: GlobalVar.rdDeptName, width: 90 },
+                    { name: 'worker', dataIndex: 'worker', text: '员工', width: 90 },
+                    { name: 'worker', dataIndex: 'worker', text: '名称', renderer: GlobalVar.rdSalmName, width: 100 },
+                    {
+                        name: 'range_money', dataIndex: 'range_money', text: '工资(元)',
+                        align:'right',
+                        renderer: function (v, m, rec) {
+                            if (!v)
+                                return '';
+                            if (rec.get('row_sort') == 2)
+                                return '部门小计: ' + Ext.util.Format.number(v, '0,000.00');
+                            else
+                                return Ext.util.Format.number(v, '0.00');
+                        }, width: 160
+                    },
+                    {
+                        name: 'inscrease_range_money', dataIndex: 'inscrease_range_money', text: '加翻',
+                        align: 'right',
+                        renderer: function (v, m, rec) {
+                            if (!v)
+                                return '';
+                            if (rec.get('row_sort') == 2)
+                                return '部门小计: ' + Ext.util.Format.number(v, '0,000.00');
+                            else
+                                return Ext.util.Format.number(v, '0.00');
+                        }, width: 160
+                    },
+                    {
+                        name: 'work_day', dataIndex: 'work_day', text: '上班天数',
+                        align: 'right',
+                        renderer: function (v, m, rec) {
+                            if (!v)
+                                return '';
+                            return Ext.util.Format.number(v, '0.00');
+                        }, width: 90
+                    },
+                    {
+                        name: 'day_money', dataIndex: 'day_money', text: '平均日薪(天)',
+                        align: 'right',
+                        renderer: function (v, m, rec) {
+                            if (!v)
+                                return '';
+                            if (rec.get('row_sort') == 2)
+                                return '部门平均: ' + Ext.util.Format.number(v, '0.00');
+                            else
+                                return v;
+                        }, width: 160
+                    },
+                    {
+                        name: 'day_money2', dataIndex: 'day_money2', text: '平均日薪(加翻)',
+                        align: 'right',
+                        renderer: function (v, m, rec) {
+                            if (!v)
+                                return '';
+                            if (rec.get('row_sort') == 2)
+                                return '部门平均: ' + Ext.util.Format.number(v, '0.00');
+                            else
+                                return v;
+                        }, width: 160
+                    }
+                ],
+                dockedItems: [{
+                    xtype: 'pagingtoolbar',
+                    store: GridStore,
+                    dock: 'bottom',
+                    displayInfo: true
+                }]
+            });
+            // select 2 as row_sort, jx_dd, worker_dep_no, worker, '' as plan_no, '' as prd_no, 0 as  plan_all_qty_pair,
+            //       0 as size_qty_pair, '' as size, '' as wp_no , '' as wp_name, 0 as plan_day_qty, 0 as day_qty_ut,
+            //       0 as qty_pair, 0 as edit_ut, 0 as up_pair, sum(day_money) as day_money
+            // from #DayDetail
+            // group by jx_dd, worker_dep_no, worker
+
+            function monitor() { }
+            var viewport = Ext.create('Ext.Viewport', {
+                layout: 'border',
+                items: [SearchPanel, Grid],
+                listeners: {
+                    afterrender: function (comp, eOpts) {
+                        var me = this;
+                        var pa = window.parent ? window.parent.Ext.getCmp('tabPanel') : null;
+                        if (pa) {
+                            var thisTabComp = pa.getComponent('Report_工资分析');
+
+                            if (thisTabComp) {
+                                thisTabComp.had_rendered = true;
+                                pa.on('SendOrder', monitor);
+                                pa.getComponent('Report_工资分析').fireEvent('had_rendered', monitor);
+                                PageClose = function () {
+                                    var pa = window.parent.Ext.getCmp('tabPanel');
+                                    if (pa) {
+                                        pa.getComponent('Report_工资分析').fireEvent('letcloseme');
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            function mergeCells(grid, cols) {
+                var arrayTr = document.getElementById(grid.getId() + "-body").firstChild.firstChild.firstChild.getElementsByTagName('tr');
+                var trCount = arrayTr.length;
+                var arrayTd;
+                var td;
+                var merge = function (rowspanObj, removeObjs) { //定义合并函数
+                    if (rowspanObj.rowspan != 1) {
+                        arrayTd = arrayTr[rowspanObj.tr].getElementsByTagName("td"); //合并行
+                        td = arrayTd[rowspanObj.td - 1];
+                        td.rowSpan = rowspanObj.rowspan;
+                        td.vAlign = "middle";
+                        Ext.each(removeObjs, function (obj) { //隐身被合并的单元格
+                            arrayTd = arrayTr[obj.tr].getElementsByTagName("td");
+                            arrayTd[obj.td - 1].style.display = 'none';
+                        });
+                    }
+                };
+                var rowspanObj = {}; //要进行跨列操作的td对象{tr:1,td:2,rowspan:5}
+                var removeObjs = []; //要进行删除的td对象[{tr:2,td:2},{tr:3,td:2}]
+                var col;
+                Ext.each(cols, function (colIndex) { //逐列去操作tr
+                    var rowspan = 1;
+                    var divHtml = null;//单元格内的数值
+                    for (var i = 1; i < trCount; i++) {  //i=0表示表头等没用的行
+                        arrayTd = arrayTr[i].getElementsByTagName("td");
+                        var cold = 0;
+                        col = colIndex + cold;//跳过RowNumber列和check列
+                        if (!divHtml) {
+                            divHtml = arrayTd[col - 1].innerHTML;
+                            rowspanObj = { tr: i, td: col, rowspan: rowspan }
+                        } else {
+                            var cellText = arrayTd[col - 1].innerHTML;
+                            var addf = function () {
+                                rowspanObj["rowspan"] = rowspanObj["rowspan"] + 1;
+                                removeObjs.push({ tr: i, td: col });
+                                if (i == trCount - 1)
+                                    merge(rowspanObj, removeObjs);//执行合并函数
+                            };
+                            var mergef = function () {
+                                merge(rowspanObj, removeObjs);//执行合并函数
+                                divHtml = cellText;
+                                rowspanObj = { tr: i, td: col, rowspan: rowspan }
+                                removeObjs = [];
+                            };
+                            if (cellText == divHtml) {
+                                if (colIndex != cols[0]) {
+                                    var leftDisplay = arrayTd[col - 2].style.display;//判断左边单元格值是否已display
+                                    if (leftDisplay == 'none')
+                                        addf();
+                                    else
+                                        mergef();
+                                } else
+                                    addf();
+                            } else
+                                mergef();
+                        }
+                    }
+                });
+            };
+        });
+    </script>
+</head>
+<body>
+</body>
+</html>

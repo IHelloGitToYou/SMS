@@ -1,0 +1,804 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>生产计划单</title>
+    <script type="text/javascript">
+        var PAGE_Locaction = "Sys/WorkPlan.html";
+        var PageClose;
+    </script>
+
+    <link href="../JS/resources/css/ext-all.css" rel="stylesheet" type="text/css" />
+    <script src="../JS/ext-all.js" type="text/javascript"></script>
+    <script src="../JS/Setting/DataModel.js?version=9"></script>
+    <script src="../JS/SMSCommonJS.js?version=20" type="text/javascript"></script>
+    <script src="../JS/commonJSFn.js?version=18" type="text/javascript"></script>
+    <script src="../JS/SunGridHeadYAOSELF.js?version=2" type="text/javascript"></script>
+    <script src="../JS/新SunEditor.js?version=19"></script>
+    <script src="../JS/Setting/WpConfig.js?version=13"></script>
+    <script type="text/javascript">
+        Ext.onReady(function () {
+            
+          
+            var OnSearch = function () {
+                WorkPlanGridStore.load({
+                    params: {
+                        action: 'SearchWorkPlan',
+                        NowUserId: GlobalVar.NowUserId
+                    }
+                });
+            }
+            var SearchPanel = Ext.create('Ext.form.Panel', {
+                region:'north',
+                title: '查询面板',
+                layout: {
+                    type: 'table',
+                    columns: 3
+                },
+                defaults: {
+                    margin: 5
+                },
+                items: [
+                    {
+                        xtype: 'datefield',
+                        fieldLabel: '下达日期',
+                        name: 'S_deliver_dd',
+                        value: GlobalVar.MouthFirstDay
+                    },
+                    {
+                        xtype: 'datefield',
+                        fieldLabel: '&nbsp&nbsp&nbsp&nbsp~&nbsp&nbsp&nbsp&nbsp至',
+                        name: 'E_deliver_dd',
+                        value: GlobalVar.MouthLastDay
+                    },
+                    {
+                        xtype: 'MSearch_Cust',
+                        fieldLabel: '客&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp户',
+                        name: 'cus_no'
+                    },
+                    {
+                        xtype: 'textfield',
+                        fieldLabel: '计&nbsp&nbsp划&nbsp&nbsp单',
+                        name: 'plan_no'
+                    },
+                    {
+                        xtype: 'MSearch_Prdt',
+                        fieldLabel: '货&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp号',
+                        name: 'prd_no'
+                    },
+                    {
+                        xtype: 'button',
+                        text: '查询',
+                        width : 60,
+                        height :30,
+                        handler: OnSearch
+                    }
+                ]
+            });
+
+            
+            var WorkPlanGridStore = Ext.create('Ext.data.Store',{
+                model: 'WorkPlan_Model',
+                pageSize: 100,
+                proxy: {
+                    type: 'ajax',
+                    url: commonVar.urlCDStr + 'ASHX/ashx_WorkPlan.ashx',
+                    reader: {
+                        type: 'json',
+                        root: 'items',
+                        total: 'total'
+                    }
+                }
+            });
+            //保存上一个查询参数
+            WorkPlanGridStore.on('beforeload', function (vstore, operation, eOpts) {
+                WorkPlanGridStore.getProxy().extraParams = SearchPanel.getForm().getValues();
+            });
+
+
+            var WorkPlanGrid = Ext.create('Ext.grid.Panel', {  //SunGridClass
+                region: 'center',
+                //columnWidth: 0.45,
+                //layout: 'fit',
+                height: 300,
+                gridID: 'WorkPlanGrid_',
+                pageID: 'BodyGrid',
+                CompanyCDNO: 'C1002',
+                store: WorkPlanGridStore,
+                bbar: [{
+                    xtype: 'pagingtoolbar',
+                    store: WorkPlanGridStore,
+                    dock: 'bottom',
+                    displayInfo: true
+                }],
+                columns: [
+                     { text: '序号', xtype: 'rownumberer', IsRownumberer: true, width: 65 },
+                     { text: '下达日期', name: 'deliver_dd', dataIndex: 'deliver_dd', xtype: 'datecolumn', format: 'Y/m/d', width: 90 },
+                     { text: '要求交期', name: 'deadline', dataIndex: 'deadline', xtype: 'datecolumn', format: 'Y/m/d', width: 90 },
+                     { text: '计划单', name: 'plan_no', dataIndex: 'plan_no', width: 100 },
+
+                     { text: '客户', name: 'cus_no', dataIndex: 'cus_no', width: 90 },
+                     { text: '货号', name: 'prd_no', dataIndex: 'prd_no', width: 120 },
+                     { text: '货名', name: 'prd_name', dataIndex: 'prd_no', width: 150, renderer: GlobalVar.rdPrdtName },
+                     {
+                         text: '计划总量', name: 'sizes_qty', dataIndex: 'sizes_qty',
+                         renderer: function (v, m, rec) {
+                             return commonVar.RenderInt(v) + '对';
+                         }
+                     },
+                     {
+                         text: '生产完成', name: 'is_done', dataIndex: 'is_done', tdCls: 'disabled_column',
+                         renderer: function (v, m, rec) {
+                             return commonVar.ConvertBool(v) ? 'Y' : 'N';
+                         },
+                         width: 90
+                     },
+                     { text: '备注', name: 'rem', dataIndex: 'rem', width: 120 },
+                     { text: '创建人员', name: 'n_man', dataIndex: 'n_man', tdCls: 'disabled_column',hidden:true },
+                     { text: '修改人员', name: 'e_man', dataIndex: 'e_man', tdCls: 'disabled_column', hidden: true }
+                ],
+                listeners: {
+                    afterrender: function (a, bb) {
+                        var me = this;
+                        OnSearch();
+                    },
+                    itemdblclick: function (vthis, record, item, index, e, eOpts) {
+                        //相同的
+                        if (EditingPlan.get('plan_id') == record.get('plan_id'))
+                            return;
+
+                        if (EditingPlan.dirty == true) {
+                            var isNew = EditingPlan.get('plan_id') < 0;
+                            var askText = isNew ? '是否放弃新建?' : '是否放弃修改?'
+
+                            Ext.Msg.show({
+                                icon: Ext.Msg.QUESTION,
+                                title: '询问',
+                                msg: askText,
+                                buttons: Ext.Msg.YESNO,
+                                fn: function (btn, text) {
+                                    if (btn == 'yes')
+                                        OnPlanLoad(record.get('plan_id'));
+                                }
+                            });
+                            return;
+                        }
+
+                        OnPlanLoad(record.get('plan_id'));
+                    }
+                }
+            });
+         
+
+            var EditingPlan = null;
+            var FormSizeStore = Ext.create('Ext.data.Store',{
+                model: 'WorkPlan_Sizes_Model',
+                data:[]
+            });
+            var FormDeptStore = Ext.create('Ext.data.Store', {
+                model: 'WorkPlan_DeptWP_Model',
+                data: []
+            });
+
+            var WorkPlanForm;
+
+            var OnPlanNew = function () {
+                Ext.suspendLayouts();
+                
+                EditingPlan = Ext.create('WorkPlan_Model', { plan_id: -1 });
+                WorkPlanForm.getComponent('FormId').getForm().reset();
+                WorkPlanForm.getComponent('FormId').getForm().loadRecord(EditingPlan);
+                FormSizeStore.removeAll();
+                FormDeptStore.removeAll();
+
+                for (var i = 0; i < 8; i++) {
+                    var size = GlobalVar.SizesStore.getAt(i).get('size');
+                    FormSizeStore.add({ size_id: -1, size: size });
+                }
+                for (var i = 0; i < GlobalVar.DeptWpListStore.getCount(); i++) {
+                    var deptNo = GlobalVar.DeptWpListStore.getAt(i).get('dep_no');
+                    if(deptNo == '000000')
+                        continue;
+
+                    FormDeptStore.add({
+                        dept_id: -1,
+                        day_qty_ut: 1,
+                        deliver_dd: '1900-01-01',
+                        deadline: '1900-01-01',
+                        wp_dep_no: deptNo
+                    });
+                }
+                Ext.resumeLayouts(true);
+
+                WorkPlanForm.getComponent('FormId').getComponent("plan_no").focus();
+                EditingPlan.dirty = false;
+            }
+
+            var OnPlanLoad = function (plan_id) {
+                WorkPlanForm.setLoading(true, WorkPlanForm.contentEl);
+                Ext.Ajax.request({
+                    type: 'post',
+                    url: commonVar.urlCDStr + 'ASHX/ashx_WorkPlan.ashx',
+                    params: {
+                        action: 'LoadWorkPlan',
+                        plan_id: plan_id,
+                        NowUserId: GlobalVar.NowUserId
+                    },
+                    success: function (response) {
+                        WorkPlanForm.setLoading(false, WorkPlanForm.contentEl);
+                        var Json = Ext.decode(response.responseText);
+                        if (Json.header.length <= 0) {
+                            alert('加载失败! 被别人删除了!');
+                            return;
+                        }
+                        FormSizeStore.removeAll();
+                        FormDeptStore.removeAll();
+
+                        EditingPlan = Ext.create('WorkPlan_Model', Json.header[0]);
+                        WorkPlanForm.getComponent('FormId').getForm().loadRecord(EditingPlan);
+                        
+
+                        for (var i = 0; i < Json.sizes.length; i++) {
+                            var rec = Ext.create('WorkPlan_Sizes_Model', Json.sizes[i]);
+                            FormSizeStore.add(rec);
+                        }
+                        for (var i = 0; i < Json.depts.length; i++) {
+                            var rec = Ext.create('WorkPlan_DeptWP_Model', Json.depts[i]);
+                            FormDeptStore.add(rec);
+
+                        }
+
+                        EditingPlan.dirty = false;
+                    },
+                    failure: function (form, action) {
+                        WorkPlanForm.setLoading(false, WorkPlanForm.contentEl);
+                        CommMsgShow("异常：", form.responseText, true);
+                    }
+                });
+            }
+
+            var OnPlanSave = function () {
+                var isAdminRoot = WpConfig.UserDefault[GlobalVar.NowUserId].root == '管理员';
+                if (isAdminRoot == false) {
+                    alert('你没有权限!');
+                    return;
+                }
+                if (WorkPlanForm.getComponent('FormId').isValid() == false) {
+                    alert("请输入齐全信息!");
+                    return;
+                }
+                var saveParams = {
+                    action: 'Save',
+                    NowUserId: GlobalVar.NowUserId
+                };
+
+                //填充回Plan头
+                WorkPlanForm.getComponent('FormId').getForm().updateRecord(EditingPlan);
+                Ext.apply(saveParams, EditingPlan.getData());
+                
+                //var countA = FormSizeStore.getCount();
+                var countB = 0;
+                FormSizeStore.each(function (rec) {
+                    if (rec.get('size') && rec.get('qty') > 0) {
+                        rec.fields.each(function (field) {
+                            var itemName = field.name;
+                            saveParams[itemName + '_b_' + countB] = rec.get(itemName);
+                        });
+                        ++countB;
+                    }
+                });
+                saveParams['SizeCount'] = countB;
+
+                countB = 0;
+                FormDeptStore.each(function (rec) {
+                    
+                    if (rec.get('wp_dep_no')) {
+                        rec.fields.each(function (field) {
+                            var itemName = field.name;
+                            saveParams[itemName + '_c_' + countB] = rec.get(itemName);
+                        });
+                        ++countB;
+                    }
+                });
+                saveParams['DeptCount'] = countB;
+
+                WorkPlanForm.getComponent('FormId').getForm().submit({
+                    url: commonVar.urlCDStr + 'ASHX/ashx_WorkPlan.ashx',
+                    params: saveParams,
+                    success: function (form, action) {
+                        if (action.result.result == true) {
+                            //重加载
+                            OnPlanLoad(action.result.plan_id);
+                            OnSearch();
+                            Ext.Msg.alert('成功', '保存成功');
+                        }
+                        else {
+                            alert('保存失败:' + action.result.msg);
+                        }
+                    },
+                    failure: function (form, action) {
+                        CommMsgShow('异常', '');
+                    }
+                });
+            } //OnPlanSave
+
+            var OnPlanDelete = function () {
+                Ext.MessageBox.confirm('询问', '确定要删除计划单吗?', function (btn) {
+                    if (btn != 'yes') {
+                        return;
+                    }
+
+                    if (EditingPlan.get('plan_id') < 0) {
+                        alert('计划单不存在!');
+                        return;
+                    }
+
+                    
+                    commonVar.AjaxRequest(
+                        commonVar.urlCDStr + 'ASHX/ashx_WorkPlan.ashx',
+                        {
+                            NowUserId: NowUserId,
+                            action: 'DeletePlan',
+                            plan_id: EditingPlan.get('plan_id')
+                        },
+                        function () {
+                            OnPlanNew();
+                            OnSearch();
+                            alert('删除成功!');
+                            
+                        }
+                    );
+
+                });
+            }
+
+            var OpenWPQtyWindow = function (oParams) {
+                //console.log(oParams);
+                window.parent.openWindow({ text: '计件录入', menu_no: 'WPQty', url: 'Sys/Import_WPQty.html', params: oParams }, false);
+            }
+
+            var askWindow = null;
+            var OnEditWPQty = function () {
+                if (EditingPlan.get('plan_id') < 0) {
+                    alert('计划单末保存!');
+                    return;
+                }
+
+                var selectSizes = WorkPlanForm.getComponent('SizeGridId').getSelectionModel().getSelection();
+                if (selectSizes.length <= 0)
+                    return;
+                if (selectSizes[0].get('size_id') < 0) {
+                    alert('尺寸末保存!');
+                    return;
+                }
+
+                if (!askWindow) {
+                    askWindow = Ext.create('Ext.window.Window', {
+                        title: '预备窗体',
+                        closeAction: 'hidden',
+                        height: 170,
+                        width: 280,
+                        margins: '5 2 2 2',
+                        defaults: {
+                            margin: '2 0 2 6',
+                            labelAlign:'right'
+                        },
+                        items: [{
+                            itemId: 'jx_dd',
+                            fieldLabel: '计薪日期',
+                            name: 'jx_dd',
+                            xtype: 'datefield',
+                            format: 'Y/m/d',
+                            value: GlobalVar.ServerDate,
+                            minValue: Ext.Date.add(GlobalVar.ServerDate, Ext.Date.DAY, -1 * (WpConfig.freezeDay - 1)),
+                            maxValue: GlobalVar.ServerDate,
+                            allowBlank: false
+                        },
+                        {
+                            itemId: 'wp_dep_no',
+                            fieldLabel: '工序部门*',
+                            name: 'wp_dep_no',
+                            xtype: 'MSearch_DeptWP',
+                            value: WpConfig.UserDefault[GlobalVar.NowUserId].wp_dep_no || '000000',
+                            allowBlank: false
+                        },
+                        {
+                            itemId: 'user_dep_no',
+                            fieldLabel: '员工部门*',
+                            name: 'user_dep_no',
+                            xtype: 'MSearch_Dept',
+                            value: WpConfig.UserDefault[GlobalVar.NowUserId].user_dep_no || '000000',
+                            allowBlank: false
+                        }],
+                        bbar: [
+                            '->', {
+                                height:30,
+                                text: '开始录入', handler: function () {
+
+                                    var jx_dd = askWindow.getComponent('jx_dd').getValue();
+                                    var wp_dep_no = askWindow.getComponent('wp_dep_no').getValue();
+                                    var user_dep_no = askWindow.getComponent('user_dep_no').getValue();
+                                    if (jx_dd < askWindow.getComponent('jx_dd').minValue || jx_dd > askWindow.getComponent('jx_dd').maxValue) {
+                                        alert('计薪日期不能超出冻结范围!');
+                                        return;
+                                    }
+
+                                    if (!user_dep_no || user_dep_no == '000000') {
+                                        alert('员工部门必须选定!');
+                                        return;
+                                    }
+
+                                    var oParams = {};
+                                    oParams['action'] = 'startEdit';
+
+                                    oParams['jx_dd'] = jx_dd;
+                                    oParams['wp_dep_no'] = wp_dep_no;
+                                    oParams['user_dep_no'] = user_dep_no;
+
+                                    oParams['plan_no'] = EditingPlan.get('plan_no');
+                                    oParams['prd_no'] = EditingPlan.get('prd_no');
+                                    oParams['plan_id'] = EditingPlan.get('plan_id');
+                                    oParams['size'] = askWindow.editintSize;
+                                    oParams['size_id'] = askWindow.editintSizeId;
+                                    oParams['cus_no'] = EditingPlan.get('cus_no');
+
+                                    OpenWPQtyWindow(oParams);
+                                }
+                            },
+                            { height: 30, text: '取消', handler: function () { askWindow.close(); } }
+                        ]
+                    });
+                }
+
+   
+                askWindow.editintSizeId = selectSizes[0].get('size_id');
+                askWindow.editintSize = selectSizes[0].get('size');
+                askWindow.show();
+            }
+
+            WorkPlanForm = Ext.create('Ext.panel.Panel', {
+                //columnWidth: 0.55,
+                region: 'east',
+                title: '计划单信息',
+                width: 567,
+                layout: {
+                    type: 'vbox',
+                    align: 'center'
+                },
+                items: [
+                    {
+                        xtype: 'form',
+                        itemId : 'FormId',
+                        width: '100%',
+                        //flex: 2,
+                        layout: {
+                            type: 'table',
+                            columns: 2
+                        },
+                        defaults: {
+                            margin: 3,
+                            labelAlign: 'right'
+                        },
+                        items: [{
+                                 xtype: 'textfield',
+                                 fieldLabel: '计&nbsp划&nbsp单',
+                                 name: 'plan_no',
+                                 itemId: 'plan_no',
+                                allowBlank:false
+                             },
+                            {
+                                xtype: 'MSearch_Cust',
+                                fieldLabel: '客&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp户',
+                                name: 'cus_no',
+                                itemId: 'cus_no',
+                                allowBlank: false
+                            },
+                            {
+                                xtype: 'MSearch_Prdt',
+                                fieldLabel: '货&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp号',
+                                name: 'prd_no',
+                                itemId: 'prd_no',
+                                allowBlank: false
+                            },
+                            {
+                                xtype: 'datefield',
+                                fieldLabel: '下达日期',
+                                name: 'deliver_dd',
+                                itemId: 'deliver_dd',
+                                format :'Y-m-d',
+                                value: Date(),
+                                allowBlank: false
+                            },
+                            {
+                                xtype: 'datefield',
+                                fieldLabel: '要求交期',
+                                name: 'deadline',
+                                itemId: 'deadline',
+                                format: 'Y-m-d',
+                                //value: GlobalVar.ServerDate,
+                                allowBlank: false
+                            },
+                            {
+                                xtype: 'numberfield',
+                                fieldLabel: '总计划量',
+                                name: 'sizes_qty',
+                                itemId:'sizes_qty',
+                                readOnly: true
+                            }
+                        ]
+                    }, {
+                        //minHeight: 60,
+                        //height : 100,
+                        itemId:'SizeGridId',
+                        xtype: 'grid',
+                        width: '100%',
+                        flex: 4,
+                        //title: '尺寸用量',
+                        region: 'center',
+                        store: FormSizeStore,
+                        plugins: [
+                            Ext.create('Ext.grid.plugin.CellEditing', {
+                                clicksToEdit: 1
+                            })
+                        ],
+                        columns: [
+                            { xtype: 'rownumberer' },
+                            {
+                                text: '尺寸', name: 'size', dataIndex: 'size',
+                                editor: {
+                                    xtype: 'MSearch_Size'
+                                }
+                            },
+                         {
+                             header: '颜色', name: 'color_id', dataIndex: 'color_id',
+                             editor: {
+                                 xtype: 'MSearch_Color'
+                             },
+                             renderer: commonVar.RenderColorName,
+                             width: 80
+                         },
+                         {
+                            text: '数量', name: 'qty', dataIndex: 'qty',
+                            editor: {
+                                xtype: 'numberfield', decimalPrecision:2
+                            },
+                            renderer: function (v) {
+                                if (!v || v == 0)
+                                    return '';
+                                return Ext.util.Format.number(v, '0.00') + '&nbsp/对';
+                            }
+                        },{
+                            header: '是否完成', name: 'is_done', dataIndex: 'is_done', tdCls: 'disabled_column',
+                            renderer: function (v, m, rec) {
+                                return commonVar.ConvertBool(v) ? 'Y' : 'N';
+                            },
+                            width: 90,
+                            hidden:true
+                        }, {
+                            xtype: 'actioncolumn',
+                            name: 'actioncolumn',
+                            header: '计件录入',
+                            align: 'center',
+                            width: 80,
+                            items: [{
+                                width: 48,
+                                text: 'ABC',
+                                fieldLabel:'EFG',
+                                icon: '../Js/resources/MyImages/Seo-Report-40.png',
+                                align:'center',
+                                header: '计件录入',
+                                handler: OnEditWPQty
+                            }]
+                        }],
+                        listeners: {
+                            itemdblclick: function (vthis, record, item, index, e, eOpts) {
+                                e.preventDefault();
+                            },
+                            containerdblclick: function (vthis, e, eOpts) {
+                                FormSizeStore.add({ size_id: -1 });
+                            },
+                            containercontextmenu: function (vthis, e, eOpts) {
+                                e.preventDefault();
+                            },
+                            headercontextmenu: function( ct, column, e, t, eOpts ){
+                                e.preventDefault();
+                            }
+                        }
+                    },
+                    {
+                        collapsible: true,
+                        collapsed: true,
+                        itemId: 'DeptGridId',
+                        height: 80,
+                        minHeight: 60,
+                        width: '100%',
+                        flex: 4,
+                        xtype: 'grid',
+                        title: '部门参数',
+                        region: 'south',
+                        store: FormDeptStore,
+                        plugins: [
+                            Ext.create('Ext.grid.plugin.CellEditing', {
+                                clicksToEdit: 1
+                            })
+                        ],
+                        columns: [{
+                            text: '工序部门', name: 'wp_dep_no', dataIndex: 'wp_dep_no',
+                            editor: {
+                                xtype: 'MSearch_DeptWP', inGrid: true, displayField: 'dep_no',
+                                matchFieldWidth: false
+                            },
+                            renderer: GlobalVar.rdDeptWPName,
+                            width:  90
+                        },
+                        //{ header: '下达日期', name: 'deliver_dd', dataIndex: 'deliver_dd', xtype: 'datecolumn', format: 'Y/m/d', width: 90 },
+                        //{ header: '部门交期', name: 'deadline', dataIndex: 'deadline', xtype: 'datecolumn', format: 'Y/m/d', width: 90 },
+                        {
+                            text: '日产量', name: 'day_qty', dataIndex: 'day_qty',
+                            editor: {
+                                xtype: 'numberfield', minValue: 1, decimalPrecision: 0
+                            },
+                            renderer: commonVar.RenderInt
+                        },
+                        {
+                            text: '产量单位', name: 'day_qty_ut', dataIndex: 'day_qty_ut',
+                            editor: {
+                                xtype: 'cbUTType'
+                            },
+                            renderer: SCom.rdUTType
+                        },
+                        {
+                            text: '计划人数', name: 'use_man', dataIndex: 'use_man',
+                            editor: {
+                                xtype: 'numberfield', minValue: 1, decimalPrecision: 0
+                            },
+                            renderer: commonVar.RenderInt
+                        }, {
+                            text: '附加参数1', name: 'other1', dataIndex: 'other1', editor: {},hidden:true
+                        }, {
+                            text: '附加参数2', name: 'other2', dataIndex: 'other2', editor: {}, hidden: true
+                        }, {
+                            text: '附加参数3', name: 'other3', dataIndex: 'other3', editor: {}, hidden: true
+                        }, {
+                            text: '附加参数4', name: 'other4', dataIndex: 'other4', editor: {}, hidden: true
+                        }, {
+                            text: '附加参数5', name: 'other5', dataIndex: 'other5', editor: {}, hidden: true
+                        }],
+                        listeners: {
+                            itemdblclick: function (vthis, record, item, index, e, eOpts) {
+                                e.preventDefault();
+                            },
+                            containerdblclick: function (vthis, e, eOpts) {
+                                FormDeptStore.add({ dept_id: -1, day_qty_ut:1 });
+                            },
+                            containercontextmenu: function (vthis, e, eOpts) {
+                                e.preventDefault();
+                            },
+                            headercontextmenu: function (ct, column, e, t, eOpts) {
+                                e.preventDefault();
+                            }
+                        }
+                    }
+                ],
+                bbar: ['->',{
+                    text: '新建计划', height: 30, handler: function () {
+                        if (EditingPlan.dirty == true) {
+                            var isNew = EditingPlan.get('plan_id') < 0;
+                            var askText = isNew ? '是否放弃新建?' : '是否放弃修改?'
+
+                            Ext.Msg.show({
+                                icon: Ext.Msg.QUESTION,
+                                title: '询问',
+                                msg: askText,
+                                buttons: Ext.Msg.YESNO,
+                                fn: function (btn, text) {
+                                    if (btn == 'yes')
+                                        OnPlanNew();
+                                }
+                            });
+                            return;
+                        }
+                        OnPlanNew();
+                    }
+                },
+                {
+                    text: '保存计划', height: 30, handler: OnPlanSave
+                },
+                {
+                    text: '删除计划', height: 30, handler: OnPlanDelete
+                }],
+                listeners: {
+                    afterrender: function (vthis, eOpts) {
+                        OnPlanNew();
+                       
+                        var sizeGrid = vthis.getComponent('SizeGridId');
+                        var allQtyBox = vthis.getComponent('FormId').getComponent('sizes_qty');
+                        sizeGrid.findPlugin('cellediting').on('edit', function (editor, e, eOpts) {
+                            if (e.value == e.originalValue)
+                                return;
+
+                            if (e.field == 'qty' || e.field == 'size') {
+                                var num = 0;
+                                sizeGrid.getStore().each(function (rec) {
+                                    if(rec.get('size'))
+                                        num += rec.get('qty');
+                                });
+                                allQtyBox.setValue(num);
+
+                                EditingPlan.dirty = true;
+                            }
+                        });
+                        
+                        WorkPlanForm.getComponent('FormId').getComponent('plan_no').on('change', function (vthis, dirty, eOpts ) {
+                            EditingPlan.dirty = true;
+                        });
+                        WorkPlanForm.getComponent('FormId').getComponent('cus_no').on('change', function (vthis, dirty, eOpts ) {
+                            EditingPlan.dirty = true;
+                        });
+                        WorkPlanForm.getComponent('FormId').getComponent('prd_no').on('change', function (vthis, dirty, eOpts ) {
+                            EditingPlan.dirty = true;
+                        });
+                        WorkPlanForm.getComponent('FormId').getComponent('deliver_dd').on('change', function (vthis, dirty, eOpts ) {
+                            EditingPlan.dirty = true;
+                        });
+                        WorkPlanForm.getComponent('FormId').getComponent('deadline').on('change', function (vthis, dirty, eOpts ) {
+                            EditingPlan.dirty = true;
+                        });
+                        
+                        var deptCE = vthis.getComponent('DeptGridId').findPlugin('cellediting');
+                        deptCE.on('edit', function (editor, e, eOpts) {
+                            if (e.vlaue == e.originalValue)
+                                return;
+
+                            EditingPlan.dirty = true;
+                        });
+                    }
+                }
+            });
+            
+            function monitor(url, orderParams) { }
+            var viewport = Ext.create('Ext.Viewport', {
+                layout: 'border',
+                items: [
+                    SearchPanel,
+                    {
+                        region : 'center',
+                        xtype: 'panel',
+                        layout: 'border',
+                        items:[
+                            WorkPlanGrid,
+                            WorkPlanForm
+                        ]
+                    }
+                ],
+                listeners: {
+                    afterrender: function (comp, eOpts) {
+                        var me = this;
+                        var pa = window.parent ? window.parent.Ext.getCmp('tabPanel') : null;
+                        //通知上级tab 这已加载完成
+                        if (pa) {
+                            var thisTabComp = pa.getComponent('WorkPlan');
+
+                            if (thisTabComp) {
+                                thisTabComp.had_rendered = true;
+                                pa.on('SendOrder', monitor);
+                                pa.getComponent('WorkPlan').fireEvent('had_rendered', monitor);
+
+                                PageClose = function () {
+                                    var pa = window.parent.Ext.getCmp('tabPanel');
+                                    //通知上级tab 这已加载完成
+                                    if (pa) {
+                                        pa.getComponent('WorkPlan').fireEvent('letcloseme');
+                                    }
+                                } // PageClose
+                            }
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+</head>
+<body>
+
+</body>
+</html>

@@ -1,0 +1,145 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>9.0.30729</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{30F0AABD-5DA2-4A5E-A9BD-99131A5ADEF1}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>SMS.Bus</RootNamespace>
+    <AssemblyName>Bus</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <FileUpgradeFlags>
+    </FileUpgradeFlags>
+    <UpgradeBackupLocation>
+    </UpgradeBackupLocation>
+    <OldToolsVersion>3.5</OldToolsVersion>
+    <PublishUrl>publish\</PublishUrl>
+    <Install>true</Install>
+    <InstallFrom>Disk</InstallFrom>
+    <UpdateEnabled>false</UpdateEnabled>
+    <UpdateMode>Foreground</UpdateMode>
+    <UpdateInterval>7</UpdateInterval>
+    <UpdateIntervalUnits>Days</UpdateIntervalUnits>
+    <UpdatePeriodically>false</UpdatePeriodically>
+    <UpdateRequired>false</UpdateRequired>
+    <MapFileExtensions>true</MapFileExtensions>
+    <ApplicationRevision>0</ApplicationRevision>
+    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
+    <IsWebBootstrapper>false</IsWebBootstrapper>
+    <UseApplicationTrust>false</UseApplicationTrust>
+    <BootstrapperEnabled>true</BootstrapperEnabled>
+    <TargetFrameworkProfile />
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="NPOI">
+      <HintPath>..\Web\Bin\NPOI.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.Xml.Linq">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.Data.DataSetExtensions">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="BusYGPJGZ.cs" />
+    <Compile Include="Bus_CheckData.cs" />
+    <Compile Include="Bus_CheckHelper.cs" />
+    <Compile Include="Bus_ImportExcel.cs" />
+    <Compile Include="Bus_PJ_Qty.cs" />
+    <Compile Include="Bus_JSQty.cs" />
+    <Compile Include="Bus_MFSO.cs" />
+    <Compile Include="Bus_PrdtWpColor.cs" />
+    <Compile Include="Bus_PrdtWpMaterial.cs" />
+    <Compile Include="Bus_Prdt_WP.cs" />
+    <Compile Include="Bus_Prdt_WPUP.cs" />
+    <Compile Include="Bus_PswUserInfo.cs" />
+    <Compile Include="Bus_SizeControl.cs" />
+    <Compile Include="Bus_WorkerDay.cs" />
+    <Compile Include="Bus_WorkPlan.cs" />
+    <Compile Include="Bus_WpQty.cs" />
+    <Compile Include="Bus_WPQtyBySize.cs" />
+    <Compile Include="Bus_YGGZ.cs" />
+    <Compile Include="Common\BusComm.cs" />
+    <Compile Include="Common\BusSearchBTN.cs" />
+    <Compile Include="Common\Bus_GridHead.cs" />
+    <Compile Include="Common\ClassEntend.cs" />
+    <Compile Include="Common\ExportExcelPNOI.cs" />
+    <Compile Include="Common\GetMaxIDBus.cs" />
+    <Compile Include="Common\JSONClass.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SYS\Bus_Cust.cs" />
+    <Compile Include="SYS\Bus_Dept.cs" />
+    <Compile Include="SYS\Bus_Prdt.cs" />
+    <Compile Include="SYS\Bus_Salm.cs" />
+    <Compile Include="SYS\Bus_DeptWp.cs" />
+    <Compile Include="SYS\Bus_SysVar.cs" />
+    <Compile Include="SYS\Material\Bus_Material.cs" />
+    <Compile Include="SYS\Material\Bus_WpQtyMaterial.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\DAL\Dal.csproj">
+      <Project>{C1105D40-44EB-4BC3-8298-C8C64DB4326F}</Project>
+      <Name>Dal</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Model\Model.csproj">
+      <Project>{BE60267C-99BB-44FA-89AB-4C68D7EC6E3A}</Project>
+      <Name>Model</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <BootstrapperPackage Include="Microsoft.Net.Client.3.5">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1 Client Profile</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Windows.Installer.3.1">
+      <Visible>False</Visible>
+      <ProductName>Windows Installer 3.1</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

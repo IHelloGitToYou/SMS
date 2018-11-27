@@ -1,0 +1,360 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title></title>
+    <script type="text/javascript">
+        var PAGE_Locaction = "Sys/Material/Material.html";
+        var PageClose;
+    </script>
+    <link href="../../JS/resources/css/ext-all.css" rel="stylesheet" type="text/css" />
+    <script src="../../JS/ext-all.js?version=2" type="text/javascript"></script>
+    <script src="../../JS/Setting/DataModel.js?version=9"></script>
+    <script src="../../JS/commonJSFn.js?version=8" type="text/javascript"></script>
+    <script src="../../JS/SMSCommonJS.js?version=20" type="text/javascript"></script>
+    <script src="../../JS/SunGridHeadYAOSELF.js?version=2" type="text/javascript"></script>
+
+	<meta charset="utf-8" />
+    <script type="text/javascript">
+
+        Ext.onReady(function () {
+            //SearchForm + Btn(Search)
+            var ashxUrl = commonVar.urlCDStr + 'ASHX/Material/ashx_Material.ashx';
+            var SearchForm = Ext.create('Ext.form.Panel', {
+                region: 'north',
+                title: '查询面板',
+                url: '',
+                bodyPadding: 5,
+                items: [{
+                        xtype: 'fieldcontainer',
+                        layout: {
+                            type: 'table',
+                            columns: 3
+                        },
+                        defaults: {
+                            fieldAlign:'right'
+                        },
+                        items:[{
+                            xtype: 'textfield',
+                            fieldLabel: '物料号码',
+                            labelAlign: 'right',
+                            itemId: 'prd_no',
+                            name: 'prd_no'
+                        }, {
+                            xtype: 'textfield',
+                            fieldLabel: '物料名称',
+                            labelAlign: 'right',
+                            itemId: 'name',
+                            name: 'name'
+                        }, {
+                            xtype: 'button',
+                            text: '查&nbsp&nbsp&nbsp&nbsp询',
+                            margin: '0 0 0 10',
+                            handler: function () {
+                                LoadStore();
+                                //form.submit({
+                                //    success: function (form, action) {
+                                //        Ext.Msg.alert('Success', action.result.msg);
+                                //    },
+                                //    failure: function (form, action) {
+                                //        Ext.Msg.alert('Failed', action.result.msg);
+                                //    }
+                                //});
+                            }
+                        }]
+                }]
+            });
+            
+            var GridStore = Ext.create('Ext.data.Store', {
+                storeId: 'GridStore',
+                model: 'Material_Model',
+                proxy: {
+                    type: 'ajax',
+                    url: ashxUrl,
+                    reader: {
+                        type: 'json',
+                        root: 'items'
+                    }
+                },
+                autoLoad: false,
+                listeners: {
+                    add: function (recs) {
+                        if (recs.length > 0) {
+                            Grid.getSelectionModel().select(recs[0]);
+                        }
+                    },
+                    update: function (storeThis, record, operation, modifiedFieldNames, eOpts) {
+                        if (record) {
+                            Grid.getSelectionModel().select(record);
+                        }
+                    },
+                    load: function (storeThis, records, successful, eOpts) {
+                        if (records && records.length > 0) {
+                            Grid.getSelectionModel().select(records[0]);
+                        }
+                    }
+                }
+            });
+
+            var LoadStore = function () {
+                var prd_no = SearchForm.getComponent(0).getComponent('prd_no').getValue();
+                var name = SearchForm.getComponent(0).getComponent('name').getValue();
+
+                GridStore.load({
+                    params: {
+                        action:'Load',
+                        prd_no: prd_no,
+                        name: name
+                    }
+                });
+            }
+
+            //PopupShow
+            var PopupShowWindow = Ext.create('Ext.window.Window', {
+                title: '编辑资料',
+                closeAction: 'hide',
+                height: 200,
+                // width: 400,
+                layout: 'fit',
+                items: {
+                    xtype: 'form',
+                    itemId: 'formId',
+                    bodyPadding: 5,
+                    items: [{
+                        xtype: 'numberfield',
+                        name: 'material_id',
+                        itemId: 'material_id',
+                        hidden: true
+                    },{
+                        xtype: 'textfield',
+                        fieldLabel: '物料号码',
+                        labelAlign:'right',
+                        name: 'prd_no',
+                        itemId: 'prd_no'
+                    }, {
+                        xtype: 'textfield',
+                        fieldLabel: '物料名称',
+                        labelAlign: 'right',
+                        name: 'name',
+                        itemId: 'name'
+                    }, {
+                        xtype: 'numberfield',
+                        fieldLabel: '皮奖单价',
+                        labelAlign: 'right',
+                        decimalPrecision: 6,
+                        name: 'price',
+                        itemId: 'price'
+                    }]
+                },
+                buttons: [{
+                    xtype: 'button',
+                    text: '确定',
+                    handler: function () {
+                        fnSave();
+                    }
+                }],
+                listeners: {
+                    afterrender: function () {
+                        this.form = this.getComponent('formId');
+                    }
+                }
+            });
+
+            var fnSave = function () {
+                var material_id = PopupShowWindow.form.getComponent('material_id').getValue();
+                var price = PopupShowWindow.form.getComponent('price').getValue();
+                var prd_no = PopupShowWindow.form.getComponent('prd_no').getValue();
+                var name = PopupShowWindow.form.getComponent('name').getValue();
+
+                var isNew = material_id < 0;
+                Ext.Ajax.request({
+                    url: ashxUrl,
+                    params: {
+                        action: 'Save',
+                        material_id: material_id,
+                        prd_no: prd_no,
+                        name: name,
+                        price: price
+                    },
+                    success: function (response) {
+                        var json = Ext.JSON.decode(response.responseText);
+                        if (json.result == true) {
+                            alert("保存成功!");
+
+                            PopupShowWindow.close();
+                            PopupShowWindow.form.updateRecord(PopupShowWindow.form.editingRec);
+
+                            if (isNew) {
+                                PopupShowWindow.form.editingRec.set('material_id', json.material_id);
+                                GridStore.insert(0, PopupShowWindow.form.editingRec);
+                            }
+                            GlobalVar.RefreshData('MATERIAL');
+                        }
+                        else {
+                            CommMsgShow("操作失败:", unescape(json.msg));
+                        }
+                    },
+                    failure: function (form, action) {
+                        CommMsgShow("异常：", form.responseText, true);
+                    }
+                });
+            }
+
+
+            var fnDelete = function (deleteingRec) {
+                Ext.Ajax.request({
+                    url: ashxUrl,
+                    params: {
+                        action: 'Delete',
+                        material_id: deleteingRec.get('material_id')
+                    },
+                    success: function (response) {
+                        var json = Ext.JSON.decode(response.responseText);
+                        if (json.result == true) {
+                            alert("删除成功");
+                            GridStore.remove(deleteingRec);
+                            GlobalVar.RefreshData('MATERIAL');
+                        }
+                        else {
+                            CommMsgShow("异常：", unescape(json.msg));
+                        }
+                    },
+                    failure: function (form, action) {
+                        CommMsgShow("异常：", form.responseText, true);
+                    }
+                });
+            }
+
+            //Bar Btn(New, Update, Delete, Close)
+            var Bar = Ext.create('Ext.toolbar.Toolbar', {
+                region: 'south',
+                items: ['-', {
+                    text: '新增',
+                    width: 60,
+                    height: 32,
+                    style: {
+                        borderColor: 'black'
+                    },
+                    itemId: 'btnNew',
+                    handler: function () {
+                        PopupShowWindow.show();
+                        var newRec = Ext.create('Material_Model', {
+                            material_id: -1
+                        });
+                        PopupShowWindow.form.getComponent('prd_no').enable();
+                        PopupShowWindow.form.editingRec = newRec;
+                        PopupShowWindow.form.loadRecord(newRec);
+                    }
+                }, '-', {
+                    text: '修改',
+                    width: 60,
+                    height: 32,
+                    style: {
+                        borderColor: 'black'
+                    },
+                    itemId: 'btnUpdate',
+                    handler: function () {
+                        var sels = Grid.getSelectionModel().getSelection();
+                        if (sels.length <= 0) {
+                            alert('末选择行!');
+                            return;
+                        }
+
+                        PopupShowWindow.show();
+                        PopupShowWindow.form.getComponent('prd_no').disable();
+                        PopupShowWindow.form.editingRec = sels[0];
+                        PopupShowWindow.form.loadRecord(sels[0]);
+                    }
+                }, '-', {
+                    text: '删除',
+                    width: 60,
+                    height: 32,
+                    style: {
+                        borderColor: 'black'
+                    },
+                    itemId: 'btnDelete',
+                    handler: function () {
+                        var sels = Grid.getSelectionModel().getSelection();
+                        if (sels.length <= 0) {
+                            alert('末选择行!');
+                            return;
+                        }
+
+                        Ext.MessageBox.confirm('询问？', '确定要删除代号为' + String(sels[0].get('prd_no')) + ' 货号吗?',
+                        function (btn) {
+                            if (btn == 'yes') {
+                                fnDelete(sels[0]);
+                            }
+                        });
+                    }
+                },  '-', {
+                    text: '关闭',
+                    width: 60,
+                    height: 32,
+                    style: {
+                        borderColor: 'black'
+                    },
+                    itemId: 'btnclose',
+                    handler: function () {
+                        PageClose();
+                    }
+                }]
+            });
+            
+            //Grid Column(prd_no, name, price)
+            var Grid = Ext.create('Ext.grid.Panel', {
+                region: 'center',
+                store: GridStore,
+                columns: [
+                    { xtype: 'rownumberer' },
+                    { text: '物料号码', dataIndex: 'prd_no', width:100 },
+                    { text: '物料名称', dataIndex: 'name', width:120 },
+                    { text: '皮奖单价', dataIndex: 'price', width: 100 }
+                ],
+                height: 200,
+                bbar: Bar
+            });
+            
+            function monitor(url, orderParams) {
+
+            }
+
+            var viewport = Ext.create('Ext.Viewport', {
+                layout: 'border',
+                items: [SearchForm, Grid],
+                listeners: {
+                    afterrender: function (comp, eOpts) {
+                  
+                        Ext.Function.defer(function () {
+                            LoadStore();
+                        }, 100);
+                        
+                        var me = this;
+                        var pa = window.parent ? window.parent.Ext.getCmp('tabPanel') : null;
+                        //通知上级tab 这已加载完成
+                        if (pa) {
+                            var thisTabComp = pa.getComponent('Material_Prdt');
+
+                            if (thisTabComp) {
+                                thisTabComp.had_rendered = true;
+                                pa.on('SendOrder', monitor);
+                                pa.getComponent('Material_Prdt').fireEvent('had_rendered', monitor);
+
+                                PageClose = function () {
+                                    var pa = window.parent.Ext.getCmp('tabPanel');
+                                    if (pa) {
+                                        pa.getComponent('Material_Prdt').fireEvent('letcloseme');
+                                    }
+                                } // PageClose
+                            }
+                        }
+                    }
+                }
+            });
+            
+        });
+    </script>
+</head>
+<body>
+
+</body>
+</html>

@@ -1,0 +1,49 @@
+﻿<!DOCTYPE html>
+<html>
+<head runat="server">
+    <title>员工计时工资明细表</title>
+    <script type="text/javascript">
+        var viewport;
+        var Grid;
+        var FormPanel;
+
+        var sPanel, cPanel, nPanel;
+
+        var PAGE_Locaction = "Sys/Page_YGJSReport.aspx";
+        var PageClose;
+
+    </script>
+    <link href="../JS/resources/ext-theme-neptune/ext-theme-neptune-all-debug.css" rel="stylesheet"
+          type="text/css" />
+    <style type="text/css">
+        .disabledRow .x-grid-cell {
+            background-color: Gray;
+            color: White;
+        }
+
+        .child-row .x-grid-cell {
+            background-color: #ffe2e2;
+            color: #900;
+        }
+
+        .adult-row .x-grid-cell {
+            background-color: #e2ffe2;
+            color: #090;
+        }
+    </style>
+    <link href="../JS/resources/css/ext-all.css" rel="stylesheet" type="text/css" / >
+    <script src="../JS/ext-all.js?version=2" type="text/javascript"> </script>
+    <script src="../JS/Setting/DataModel.js?version=9"></script>
+    <script src="../JS/commonJSFn.js?version=18" type="text/javascript"> </script>
+    <script src="../JS/SMSCommonJS.js?version=20" type="text/javascript"> </script>
+    <script src="../JS/SunGridHeadYAOSELF.js?version=2" type="text/javascript"> </script>
+    <script src="../JS/新SunEditor.js?version=19"></script>
+    <script src="../JS/Setting/WpConfig.js?version=13"></script>
+    <script src="../JS/Setting/YGJS_Setting.js?version=2" type="text/javascript"></script>
+</head>
+<body>
+    <form id="form1" runat="server">
+        <div></div>
+    </form>
+</body>
+</html>

@@ -1,0 +1,251 @@
+﻿<!DOCTYPE html>
+<html>
+<head runat="server">
+    <title>客户资料</title>
+    <script type="text/javascript">
+            var PAGE_Locaction = "Sys/Cust.html";
+            var PageClose;
+    </script>
+
+    <link href="../JS/resources/css/ext-all.css" rel="stylesheet" type="text/css" />
+    <script src="../JS/ext-all.js?version=2" type="text/javascript"></script>
+    <script src="../JS/Setting/DataModel.js?version=9"></script>
+    <script src="../JS/SMSCommonJS.js?version=20" type="text/javascript"></script>
+    <script src="../JS/commonJSFn.js?version=18" type="text/javascript"></script>
+    <script src="../JS/SunGridHeadYAOSELF.js?version=2" type="text/javascript"></script>
+
+    <script src="../JS/Setting/Cust_Setting.js?dc=123" type="text/javascript"></script>
+    <script type="text/javascript">
+        Ext.onReady(function () {
+            var grid, store;
+            var ashxUrl = '../ASHX/Cust.ashx';
+            var gridPanel = Ext.create('CustSet.CustGrid', {
+                region: 'center',
+                listeners: {
+                    MyRender: function () {
+                        var Me = this;
+
+                        store = Me.store;
+                        grid = Me.grid;
+                        Me.grid.on('itemclick', function (view, record, item, index, e, eOpts) {
+                            if (showWin.isVisible() == true) {
+                                form.loadRecord(record);
+                                form.state = 'view';
+                                form.onViewState();
+                                form.cus_no = record.get('cus_no');
+                            }
+                        });
+
+                        Me.grid.on('itemdblclick', function (view, record, item, index, e, eOpts) {
+                            if (showWin.isVisible() == false) {
+                                showWin.show();
+                            }
+
+                            form.loadRecord(record);
+                            form.state = 'view';
+                            form.onViewState();
+                            form.cus_no = record.get('cus_no');
+                        });
+
+                        store.proxy.url = ashxUrl;
+                        //保存上一个查询参数
+                        store.on('beforeload', function (vstore, operation, eOpts) {
+                            console.log(operation.params);
+                            if (!operation.params)
+                                store.proxy.extraParams = store.lastParams;
+                            else
+                                store.lastParams = operation.params;
+                        });
+
+                        store.load({
+                            params: { action: 'GETDATA', sqlWhere: '' }
+                        });
+                    }
+                }
+            });
+
+            var form = Ext.create('CustFormClass', {
+                //layout: 'anchor',
+                //height: 150,
+                //          width : 600,
+                //renderTo: Ext.getBody()
+            });
+
+
+            var showWin = Ext.create('Ext.window.Window', {
+                title: '简明客户资料',
+                closeAction: 'hide',
+                height: 200,
+                // width: 400,
+                layout: 'fit',
+                items: [
+                form
+            ],
+                listeners: {
+                    show: function () {
+                        gridBar.setDisabled('btnsave,btndelete', false);
+                    },
+                    close: function () {
+                        gridBar.setDisabled('btnsave,btndelete', true);
+                    }
+                }
+            });
+
+            //////////   2.速查时，触发btnfind 事件
+            //////////   3.删除时，触发btndelete 事件
+            //////////   4.保存时，触发btnsave 事件
+            //////////   5.关闭时，触发btnclose 事件
+            var gridBar = Ext.create('ToolBarFormat', {
+                region: 'south',
+                listeners: {
+                    btnnew: function () {
+                        form.getForm().reset();
+                        form.state = 'new';
+                        form.onNewState();
+                        form.cus_no = '';
+                        showWin.show();
+                    },
+                    btnfind: function () {
+
+                    },
+                    btndelete: function () {
+                        // form.cus_no = record.get('cus_no');
+                        Ext.MessageBox.confirm('询问？', '确定要删除代号为' + String(form.cus_no) + ' 客户吗?',
+                        function (btn) {
+                            if (btn == 'yes') {
+                                //新建末保存前，删除
+                                if (form.cus_no == '') {
+                                    form.getForm().reset();
+                                    return false;
+                                }
+                                var cus_no = form.getComponent('cus_no').getValue(),
+                                    rec = store.findRecord('cus_no', cus_no),
+                                    oldIndex = store.indexOf(rec);
+
+
+                                Ext.Ajax.request({
+                                    url: ashxUrl,
+                                    params: {
+                                        action: 'Delete',
+                                        cus_no: form.cus_no
+                                    },
+                                    success: function (response) {
+
+                                        var json = Ext.JSON.decode(response.responseText);
+                                        if (json.result == true) {
+                                            //CommMsgShow("温馨提示：", "操作成功！");
+                                            showWin.close();
+
+                                            form.state = 'new';
+                                            form.cus_no = '';
+                                            store.load({
+                                                params: { action: 'GETDATA', sqlWhere: '' },
+                                                callback: function () {
+                                                    grid.getSelectionModel().select(oldIndex - 1 >= 0 ? oldIndex - 1 : 0);
+                                                }
+                                            });
+                                        }
+                                        else {
+                                            CommMsgShow("异常：", unescape(json.msg));
+                                        }
+                                    },
+                                    failure: function (form, action) {
+
+                                        CommMsgShow("异常：", form.responseText, true);
+                                    }
+                                });
+                            }
+                        }
+                    );
+                    },
+                    btnsave: function () {
+                        gridBar.setDisabled('btnsave', true);
+                        gridBar.setDisabled('btndelete', true);
+
+                        form.getForm().submit({
+                            url: ashxUrl,
+                            params: {
+                                action: form.state == 'new' ? 'new' : 'update',
+                                n_man: GlobalVar.NowUserId
+                            },
+                            success: function (vvvform, action) {
+                                var json = action.result; // Ext.JSON.decode(action.result);
+                                if (json.result == true) {
+                                    showWin.close();
+
+                                    store.load({
+                                        url: ashxUrl,
+                                        params: { action: 'GETDATA', sqlWhere: '' },
+                                        callback: function () {
+
+                                            var cus_no = form.getComponent('cus_no').getValue(),
+                                                rec = store.findRecord('cus_no', cus_no);
+
+                                            if (!rec)
+                                                return false;
+                                            grid.getSelectionModel().select(rec);
+                                        }
+                                    });
+                                }
+                                else {
+                                    CommMsgShow("异常：", json.msg, true);
+                                }
+                            },
+                            failure: function (form, action) {
+                                CommMsgShow('异常', '');
+                                gridBar.setDisabled('btnsave,btndelete', false);
+                            }
+                        });
+                    },
+                    btnclose: function () {
+                        PageClose();
+                    },
+                    afterrender: function () {
+                        gridBar.setDisabled('btnsave,btndelete', true);
+                    }
+                }
+            });
+
+            function monitor(url, orderParams) {
+
+            }
+
+            var viewport = Ext.create('Ext.Viewport', {
+                layout: 'border',
+                items: [gridPanel, gridBar],
+                listeners: {
+                    afterrender: function (comp, eOpts) {
+                        var me = this;
+                        var pa = window.parent ? window.parent.Ext.getCmp('tabPanel') : null;
+                        //通知上级tab 这已加载完成
+                        if (pa) {
+                            var thisTabComp = pa.getComponent('Cust');
+                            if (thisTabComp) {
+                                thisTabComp.had_rendered = true;
+                                pa.on('SendOrder', monitor);
+                                pa.getComponent('Cust').fireEvent('had_rendered', monitor);
+
+                                PageClose = function () {
+                                    var pa = window.parent.Ext.getCmp('tabPanel');
+                                    //通知上级tab 这已加载完成
+                                    if (pa) {
+                                        pa.getComponent('Cust').fireEvent('letcloseme');
+                                    }
+                                } // PageClose
+
+                            }
+                        }
+                    }
+                }
+            });
+
+        });
+
+    </script>
+</head>
+<body>
+    <form id="form1" runat="server">
+        <div></div>
+    </form>
+</body>
+</html>

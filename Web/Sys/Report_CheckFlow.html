@@ -1,0 +1,135 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title></title>
+    <script type="text/javascript">
+        var PAGE_Locaction = "Sys/Report_CheckFlow.html";
+        var PageClose;
+    </script>
+
+    <link href="../JS/resources/css/ext-all.css" rel="stylesheet" type="text/css" / >
+    <script src="../JS/ext-all.js?version=2" type="text/javascript"> </script>
+    <script src="../JS/Setting/DataModel.js?version=9"></script>
+    <script src="../JS/commonJSFn.js?version=18" type="text/javascript"> </script>
+    <script src="../JS/SMSCommonJS.js?version=20" type="text/javascript"> </script>
+    <script src="../JS/新SunEditor.js"></script>
+    <script src="../JS/Setting/CheckFlowHelper.js"></script>
+    <script type="text/javascript">
+        Ext.onReady(function () {
+            var mePanel = this;
+            var AfterCheck = function () {
+                OnSearch();
+            }
+
+            var OnSearch = function () {
+                var only_working = SearchPanel.getForm().getValues().only_working == 'T' ? 'T' : 'F';
+                CheckFlowHelper.GetAskAllList(only_working, function (text) {
+                    var json = Ext.JSON.decode(text);
+                    GridStore.loadData(json);
+                }, Grid );
+            }
+
+            var SearchPanel = Ext.create('Ext.form.Panel', {
+                region: 'north',
+                margin: 3,
+                //height: 200,
+                defaults: {
+                    labelAlign: 'right',
+                    width: 180,
+                    labelWidth: 60,
+                    margin: '10'
+                },
+                layout: {
+                    type: 'hbox',
+                    align: 'middle'
+                },
+                items: [{
+                    readOnly: true,
+                    fieldLabel: '审核状态',
+                    name: 'check_state',
+                    itemId: 'check_state',
+                    xtype: 'checkStatusComboBox',
+                    value: 0
+                },
+                {
+                    xtype: 'checkbox',
+                    name: 'only_working',
+                    itemId: 'only_working',
+                    boxLabel: '显示未审核',
+                    inputValue: 'T',
+                    value : 'T'
+                },
+                {
+                    margin: '12 10 10 10',
+                    xtype:'label',
+                    text: '当前审批人:' + GlobalVar.NowUserName + ''
+                },
+                {
+                    text: '查&nbsp&nbsp&nbsp&nbsp询',
+                    xtype: 'button',
+                    width: 80,
+                    handler: OnSearch
+                }
+                //, {
+                //    xtype: 'button',
+                //    text: '导出',
+                //    icon: '../JS/resources/MyImages/ms_excel.png',
+                //    width: 80,
+                //    handler: function () {
+                //        GlobalVar.ToExcel(Grid, '汇总工资');
+                //    }
+                //}
+                ]
+            });
+            
+            var GridStore = Ext.create('Ext.data.Store', {
+                model: 'Model_AskPrice',
+                data:[]
+            });
+
+            
+            var Grid = Ext.create('Ext.grid.Panel', {
+                region: 'center',
+                store: GridStore,
+                columns: CheckFlowHelper.GetGridColumns(AfterCheck, mePanel),
+                listeners:{
+                    afterrender: function () {
+                        OnSearch();
+                    }
+                }
+            });
+            
+            function monitor() { }
+            var viewport = Ext.create('Ext.Viewport', {
+                layout: 'border',
+                items: [SearchPanel, Grid],
+                listeners: {
+                    afterrender: function (comp, eOpts) {
+                        var me = this;
+                        var pa = window.parent ? window.parent.Ext.getCmp('tabPanel') : null;
+                        if (pa) {
+                            var thisTabComp = pa.getComponent('Report_CheckFlow');
+
+                            if (thisTabComp) {
+                                thisTabComp.had_rendered = true;
+                                pa.on('SendOrder', monitor);
+                                pa.getComponent('Report_CheckFlow').fireEvent('had_rendered', monitor);
+                                PageClose = function () {
+                                    var pa = window.parent.Ext.getCmp('tabPanel');
+                                    if (pa) {
+                                        pa.getComponent('Report_CheckFlow').fireEvent('letcloseme');
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+
+</head>
+<body>
+
+</body>
+</html>

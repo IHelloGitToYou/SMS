@@ -1,0 +1,1300 @@
+﻿<!DOCTYPE html>
+<html>
+<head runat="server">
+    <title>货品工序设置</title>
+
+    <script type="text/javascript">
+        var PAGE_Locaction = "Sys/Prdt_WP.html";
+        var PageClose;
+        var gridPanel;
+        var grid, store, editor;
+        var ed_dep, gridMenu, onGridWPAddUp, UPGridEditor,
+            gridHFUP_Cus_noEd, GridUP_Panel, gridBar;
+        var GetShowingUpNos;
+        var ColorScope;
+    </script>
+    <style>
+        .disabledRow .x-grid-cell {
+            background-color: Gray;
+            color: White;
+        }
+    </style>
+
+
+    <link href="../JS/resources/css/ext-all.css" rel="stylesheet" type="text/css" />
+    <script src="../JS/ext-all.js" type="text/javascript"></script>
+    <script src="../JS/Setting/DataModel.js?version=9"></script>
+
+    <script src="../JS/commonJSFn.js?version=18" type="text/javascript"></script>
+    <script src="../JS/SMSCommonJS.js?version=20" type="text/javascript"></script>
+    <script src="../JS/SunGridHeadYAOSELF.js?version=2" type="text/javascript"></script>
+
+    <script src="../JS/Setting/Cust_Setting.js" type="text/javascript"></script>
+    <script src="../JS/Setting/Prdt_Setting.js" type="text/javascript"></script>
+
+    <script src="../JS/Setting/Salm_Setting.js" type="text/javascript"></script>
+    <script src="../JS/Setting/SearchSySBox.js" type="text/javascript"></script>
+
+
+    <script src="../JS/新SunEditor.js?version=19" type="text/javascript"></script>
+    <script src="../JS/GridTool.js?version=2" type="text/javascript"></script>
+    <script src="../JS/Setting/WpConfig.js?version=13"></script>
+    <script src="../JS/Setting/PrdtWP_Setting.js?version=2" type="text/javascript"></script>
+    <script src="../JS/Setting/PrdtWpColorPrice.js"></script>
+    <script src="../JS/Setting/Material/PrdtWpSaveMaterial.js"></script>
+
+
+    <script type="text/javascript">
+        onGridColorButtonClick = function (rowIndex) {
+            ColorScope.doStart(rowIndex);
+        }
+
+       
+
+        Ext.onReady(function () {
+            Ext.tip.QuickTipManager.init()
+
+            Ext.Ajax.timeout = 60 * 1000;
+            PrdtWPSet.menuCopyUp = Ext.create('Ext.menu.Menu', {
+                width: 100,
+                curUp_NO: '-1',
+                nowCopyUp_NO: '-1',
+                items: [{
+                    text: '复制单价组',
+                    handler: function () {
+                        if (PrdtWPSet.menuCopyUp.curUp_NO != '-1')
+                            PrdtWPSet.menuCopyUp.nowCopyUp_NO = PrdtWPSet.menuCopyUp.curUp_NO;
+                    }
+                }, {
+                    text: '粘贴单价组',
+                    handler: function () {
+                        var up_no = PrdtWPSet.menuCopyUp.nowCopyUp_NO,
+                            up_noNow = PrdtWPSet.menuCopyUp.curUp_NO;
+
+                        if (up_no == '-1')
+                            return
+                        if (up_noNow == '-1')
+                            return
+
+                        var S = gridPanel.store, //grid.getView().getStore(),
+                            Scnt = S.getCount(), //up_no
+                            i = 0;
+
+
+                        gridPanel.grid.suspendLayouts();
+                        for (; i < Scnt; ++i) {
+
+                            var rec = S.getAt(i);
+                            rec.set('up_pair' + up_noNow, rec.get('up_pair' + up_no));
+                            rec.set('up_pic' + up_noNow, rec.get('up_pic' + up_no));
+                        }
+                        gridPanel.grid.resumeLayouts(false);
+                    }
+                }, {
+                    text: '导出Excel',
+                    icon: '../JS/resources/MyImages/office-excel.png',
+                    handler: function () {
+                        GlobalVar.ToExcel(gridPanel.grid, prdtBox.getValue());
+                    }
+                }]
+            });
+
+            var onFormNew = function () {
+                prdtBox.reset();
+                gridPanel.store.removeAll();
+                GridUP_Panel.store.removeAll();
+            }
+
+            var LoadPrdtWp = function (prd_no) {
+                if (!prd_no) {
+                    alert('货号不能为空');
+                    return false;
+                }
+                /// 加载工序单价,  同时加载当前有效的单价
+                GridUP_Panel.store.load({
+                    params: { action: 'GetPrdtUps', prd_no: prd_no },
+                    callback: function (records, operation, success) {
+                        var defalutUPs = Ext.JSON.decode(operation.response.responseText).DefalutUPs.toString().split(',');
+                        //已显示的单价组，打勾
+                        for (var i = 0; i < defalutUPs.length; ++i) {
+                            var mRec = GridUP_Panel.store.findRecord('up_no', defalutUPs[i]);
+                            if (mRec) {
+                                mRec.set('active', true);
+                            }
+                        }
+
+                        onGridWPAddUp(defalutUPs, true, function (json, validUps) { 
+                            if (json.items.length <= 0)
+                                return;
+                            gridPanel.store.removeAll();
+                            gridPanel.store.add(json.items);
+                        });
+                    }
+                });
+            }
+
+            var prdtBox = Ext.create('MultiSearchComboBox.Prdt', {
+                allowBlank: false,
+                fieldLabel: '货&nbsp&nbsp&nbsp&nbsp品',
+                itemId: 'A',
+                name: 'prd_no',
+                itemId: 'prd_no',
+                forceSelection: true,
+                listeners: {
+                    select: function (combo, records, eOpts) {
+                        if (records.length > 0) {
+                            LoadPrdtWp(combo.getValue());
+                            prdtBox.PrdtWPIsEmpty = false;
+                        }
+                        else {
+                            onFormNew();
+                        }
+                    }
+                }
+            });
+
+            var northPanel = Ext.create('Ext.form.Panel', {
+                region: 'north',
+                bodyPadding: 5,  // Don't want content to crunch against the borders
+                //height: 60,
+                layout: 'hbox',
+                url: PrdtWPSet.ashxUrl,
+                defaults: {
+                    labelAlign: 'right'
+                    //width : 250
+                },
+                items: [
+                    prdtBox,
+                    {
+                        xtype: 'MSearch_DeptWP',
+                        fieldLabel: '默认部门',
+                        itemId: 'B',
+                        name: 'dep_no'
+                    }
+                ],
+                listeners: {
+                    afterrender: function () {
+                        this.BoxA = this.getComponent('A');
+                        this.BoxB = this.getComponent('B');
+                    }
+                }
+            });
+
+            editor = Ext.create('Ext.grid.plugin.CellEditing', {
+                clicksToEdit: 1,
+                listeners: {
+                    beforeedit: function (editor, e, eOpts) {
+                        editor.nowRecord = e.record;
+                    },
+                    edit: function (editor, e) {
+                        if (e.value == e.originalValue) {
+                            return false;
+                        }
+
+                        Ext.suspendLayouts();
+
+                        if (e.field.indexOf('up', 0) >= 0) {
+                            var UpUpName = e.column.up('gridcolumn').name;
+                            var _upNo = UpUpName.substring(2, UpUpName.length);
+                            //改的是那一个，是对单价，个单价?
+                            if (e.field.indexOf('up_pic', 0) >= 0)
+                                e.record.set('up_pair' + _upNo, 1.00 * e.record.get('pic_num') * e.value);
+                            else
+                                e.record.set('up_pic' + _upNo, 1.00 * e.value / e.record.get('pic_num'));
+                        }
+
+                        //修改个数,更新显示的单位对单价 
+                        if (e.field == 'pic_num' && GridUP_Panel.NewUpNos && GridUP_Panel.NewUpNos.length > 0) {
+                            for (var i = 0; i < GridUP_Panel.NewUpNos.length; i++) {
+                                var _up_no = GridUP_Panel.NewUpNos[i];
+                                //console.log([GridUP_Panel.NewUpNos, _up_no, e.record.get('up_pic' + _up_no), e.record.get('pic_num')]);
+                                var _up_pic = 1.00 * e.record.get('pic_num') * e.record.get('up_pic' + _up_no);
+                                _up_pic = Ext.util.Format.round(_up_pic, 5);
+                                e.record.set('up_pair' + _up_no, _up_pic);
+                            }
+                        }
+
+                        if ((e.record.IsDirty || false) != true && e.originalValue == e.value)
+                            e.record.commit();
+                        else {
+                            e.record.setDirty(true);
+                            e.record.IsDirty = true;
+                        }
+
+                        Ext.resumeLayouts(false);
+                    }
+                }
+            });
+
+            ed_PicNum = Ext.create('Ext.form.field.Number', {
+                decimalPrecision: 0,
+                minValue: 0
+            });
+
+            var onSetSwitchClick = function (actionField) {
+                var sels = gridPanel.grid.getSelectionModel().getSelection();
+                if (sels.length == 0) {
+                    return;
+                }
+                if (sels[0].get('wp_state') == 'NEWWP') {
+                    alert('工序末保存!');
+                    return;
+                }
+
+                var setA = !sels[0].get(actionField);
+                Ext.Ajax.request({
+                    type: 'post',
+                    url: '../ASHX/Prdt_WP.ashx',
+                    params: {
+                        action: 'SetSwitch',
+                        action_type: actionField,
+                        prd_no: prdtBox.getValue(),
+                        wp_no: sels[0].get('wp_no'),
+                        switch: (setA ? 'T' : 'F')
+                    },
+                    success: function (response) {
+                        var resultJson = Ext.decode(response.responseText);
+                        if (resultJson.result == true) {
+                            sels[0].set(actionField, setA);
+                            sels[0].commit();
+                        }
+                    }
+                });
+            }
+
+
+
+
+            gridMenu = Ext.create('Ext.menu.Menu', {
+                width: 100,
+                GetRecordIndex: function () {
+                    var recs = gridPanel.grid.getSelectionModel().getSelection(),
+                        index = 0;
+                    if (recs.length >= 0)
+                        index = gridPanel.store.indexOf(recs[0]);
+                    else {
+                        CommMsgShow('提示', '请指定工序');
+                        return -1;
+                    }
+
+                    return index;
+                },
+                GetNowRecord: function () {
+                    var recs = gridPanel.grid.getSelectionModel().getSelection();
+                    return recs;
+                },
+                items: [{
+                    text: '新行工序',
+                    icon: '../JS/resources/MyImages/clycle_add.png',
+                    handler: function () {
+                        var NewRecs = gridPanel.store.add(Ext.create('Model_PrdtWP', {
+                            itm: -1,
+                            wp_state: 'NEWWP',
+                            dep_no: northPanel.BoxB.value,
+                            dep_name: northPanel.BoxB.getRawValue()
+                        }));
+
+                        var wp_nameCol = gridPanel.grid.headerCt.getComponent('name');
+                        gridPanel.grid.getSelectionModel().select(NewRecs[0]);
+                        gridPanel.cellEditing.startEdit(NewRecs[0], wp_nameCol);
+                    }
+                },
+                {
+                    text: '插入',
+                    icon: '../JS/resources/MyImages/arrow_join_left.png',
+                    handler: function () {
+                        var index = gridMenu.GetRecordIndex();
+                        if (index < 0)
+                            return false;
+
+                        var NewRecs = gridPanel.store.insert(index, Ext.create('Model_PrdtWP', {
+                            wp_state: 'NEWWP',
+                            is_cutwp: false,
+                            dep_no: northPanel.BoxB.HiddenValue,
+                            dep_name: northPanel.BoxB.RawValue
+                        }));
+
+                        var wp_nameCol = gridPanel.grid.headerCt.getComponent('name');
+                        gridPanel.grid.getSelectionModel().select(NewRecs[0]);
+                        gridPanel.cellEditing.startEdit(NewRecs[0], wp_nameCol);
+                    }
+                }, {
+                    text: '删除本工序',
+                    icon: '../JS/resources/MyImages/Delete.png',
+                    handler: function () {
+                        //  前台只标识本行要删除
+                        ////后台要检查有无被使用过，才删除
+                        //store.removeAt(index);
+                        var SelectRecs = gridMenu.GetNowRecord();
+                        if (SelectRecs && SelectRecs.length > 0) {
+                            var isNewRec = SelectRecs[0].get('itm') === -1 ? true : false;
+                            if (isNewRec === true)
+                                gridPanel.store.remove(SelectRecs[0]);
+                            else
+                                SelectRecs[0].set('wp_state', 'DROPWP');
+                        }
+                    }
+                }, '-', {
+                    text: '开启(关闭)区分',
+                    icon:'../JS/resources/MyImages/color-Switch.png',
+                    itemId: 'SetColorSwitchId',
+                    handler: function () {
+                        onSetSwitchClick('color_different_price');
+                    }
+                },
+                {
+                    text: '使用(取消)皮奖',
+                    icon: '../JS/resources/MyImages/color-Switch.png',
+                    itemId: 'SetSaveMaterialAward',
+                    handler:  function () {
+                        onSetSwitchClick('save_material_award');
+                    }
+                }]
+            });
+            
+            
+            gridMenu.on('beforeShow', function (vthis, eOpts) {
+                var menuItemColor = gridMenu.getComponent('SetColorSwitchId');
+                var menuItemSetSaveMaterialAward = gridMenu.getComponent('SetSaveMaterialAward');
+
+                var sels = gridPanel.grid.getSelectionModel().getSelection();
+                var focusRow = sels.length > 0 ? sels[0] : null;
+                if (focusRow) {
+                    menuItemColor.setDisabled(false);
+                    menuItemSetSaveMaterialAward.setDisabled(false);
+                    if (focusRow.get('color_different_price') == false) {
+                        menuItemColor.setText('开启颜色区分');
+                    } else {
+                        menuItemColor.setText('关闭颜色区分');
+                    }
+
+                    if (focusRow.get('save_material_award') == false) {
+                        menuItemSetSaveMaterialAward.setText('开启皮奖');
+                    } else {
+                        menuItemSetSaveMaterialAward.setText('关闭皮奖');
+                    }
+                }
+                else {
+                    menuItemColor.setDisabled(true);
+                    menuItemSetSaveMaterialAward.setDisabled(true);
+                }
+            });
+
+           
+
+            /////默认列布局, 末包含单价
+            PrdtWPSet.GridCols = function () {
+                return [
+                        { header: '序号', xtype: 'rownumberer', IsRownumberer: true, sortable: false, width: 55 },
+                        {
+                            header: '工序部门', name: 'dep_no', dataIndex: 'dep_no',
+                            editor: {
+                                xtype: 'MSearch_DeptWP',
+                                displayGridField: 'dep_name',
+                                inGrid: true
+                            },
+                            renderer: GlobalVar.rdDeptName,
+                            sortable: false,
+                            width: 90
+                        },
+                        { header: '名称', itemId: 'name', name: 'name', dataIndex: 'name', editor: {}, sortable: false, width: 120 },
+                        {
+                            header: '个数/对', name: 'pic_num', dataIndex: 'pic_num',
+                            editor: {
+                                xtype: 'numberfield',
+                                decimalPrecision: 0,
+                                minValue: 0
+                            },
+                            sortable: false,
+                            width: 90
+                        },
+                        { header: '剪线', name: 'is_cutwp', dataIndex: 'is_cutwp', xtype: 'checkcolumn', sortable: false, width: 60 },
+                        { header: '拼身', name: 'is_pswp', dataIndex: 'is_pswp', xtype: 'checkcolumn', sortable: false, width: 60 },
+                        {
+                            header: '计件限制',
+                            name: 'wq_type',
+                            dataIndex: 'wq_type',
+                            sortable: false,
+                            width: 100,
+                            editor:{
+                                xtype: 'cbWQType'
+                            },
+                            renderer: SCom.rdWQType
+                        },
+                        {
+                            header: '指定尺寸',
+                            name: 'is_size_control', 
+                            dataIndex: 'is_size_control',
+                            //editor: { xtype: 'checkbox', hideLabel: true },
+                            xtype: 'checkcolumn', 
+                            listeners: {
+                                checkchange: function (column, rowindex, isChecked) {
+                                    gridPanel.grid.fireEvent('select', gridPanel.grid.getView(), gridPanel.grid.store.getAt(rowindex));
+                                }
+                            },
+                            sortable: false, width: 80
+                        }, 
+                        {
+                            header: '特殊单价',
+                            name: 'color_different_price', 
+                            dataIndex: 'color_different_price',
+                            renderer: function (v, m, rec, rowIndex) {
+                                m.tdAttr = 'data-qtip="' + '右击开放设置' + '"';
+                                if (v == true) {
+                                    return '<button type="button" ' +
+                                           '  class="x-btn x-unselectable x-btn-default-small x-noicon x-btn-noicon x-btn-default-small-noicon" '
+                                           + ' onclick=onGridColorButtonClick("' + rowIndex + '") >设置</button>';
+                                }
+                                else {
+                                    return '静态单价';
+                                }
+                            }
+                        },
+                        {
+                            header: '包含皮奖',
+                            name: 'save_material_award',
+                            dataIndex: 'save_material_award',
+                            renderer: function (v, m, rec, rowIndex) {
+                                m.tdAttr = 'data-qtip="' + '右击开放设置' + '"';
+                                if (v == true) {
+                                    return '<button type="button" ' +
+                                           '  class="x-btn x-unselectable x-btn-default-small x-noicon x-btn-noicon x-btn-default-small-noicon" '
+                                           + ' onclick=PrdtWpMaterialScope.fnStart("' + rec.get('prd_no') + '","' + rec.get('wp_no') + '","' + rec.get('name') + '") >设置</button>';
+                                }
+                                else {
+                                    return '没皮奖';
+                                }
+                            }
+                        }, {
+                            header: '状态', name: 'state', dataIndex: 'state',
+                            editor: { xtype: 'cbPrdtState' },
+                            sortable: false, width: 60,
+                            hidden: true,
+                            renderer: SCom.rdPrdtState
+                        }
+                ]
+            }
+
+
+            gridPanel = Ext.create('PrdtWPSet.PrdtWPGrid', {
+                region: 'center',
+                //width: 900,
+                id: 'GridId',
+                cellEditing: editor,
+                selType: 'cellmodel',
+                getDefaultColumnsSetting: PrdtWPSet.GridCols,
+                enableColumnMove: false,
+                getRowClass: function (record) {   //出错了
+                    if (record.get('wp_state') == 'NEWWP')
+                        return 'x-new-row';
+                    if (record.get('wp_state') == 'DROPWP')
+                        return 'x-deleted-row';
+                    if (record.get('state') == '1')
+                        return 'x-StopUse-row';
+                    return '';
+                },
+                listeners: {
+                    MyRender: function () {
+                        var me = this,
+                            grid = me.grid;
+                        grid.on('containerdblclick', function () {
+                            gridMenu.getComponent(0).handler();
+                        });
+                        grid.on('itemcontextmenu', function (vthis, record, item, index, e, eOpts) {
+                            e.preventDefault();
+                            gridMenu.showAt(e.getXY());
+                        });
+                        grid.on('containercontextmenu', function (vthis, e, eOpts) {
+                            e.preventDefault();
+                            gridMenu.showAt(e.getXY());
+                        });
+                        grid.on('headercontextmenu', function (ct, column, e, t, eOpts) {
+                            e.preventDefault();
+                            //复制单价
+                            PrdtWPSet.menuCopyUp.curUp_NO = column.up_no ? column.up_no.toString() : '-1';
+                            PrdtWPSet.menuCopyUp.showAt(e.getXY());
+                        });
+
+                        GridTools.onGoodLike(me.grid, undefined, false);
+                    }
+                }
+            });
+
+
+            onGridWPAddUp = function (load_up_nos, updateLayout, callBack) {
+                if (updateLayout == true) {
+                    LayoutGrid(load_up_nos);
+                }
+
+                Ext.Ajax.request({
+                    url: '../ASHX/Prdt_WP.ashx',
+                    params: {
+                        action: 'GetPrdtWps',
+                        prd_no: prdtBox.getValue(),
+                        ups: load_up_nos.toString()
+                    },
+                    success: function (response) {
+                        var json = Ext.JSON.decode(response.responseText);
+                        gridPanel.store.removeAll();
+
+                        if (json.items.length > 0) {
+                            gridPanel.store.add(json.items);
+                            if (callBack) {
+                                callBack(json, load_up_nos);
+                            }
+                        }
+                        else {
+                            if (callBack) {
+                                callBack(json, []);
+                            }
+                        }
+                    },
+                    failtrue: function () {
+                        CommMsgShow('异常', '末显示错误信息', true);
+                    }
+                });
+            } ////onGridWPAddUp
+
+            var LayoutGrid = function (showUps) {
+                // 避免重复显示
+                var NewUpNos = [];
+                for (var i = 0; i < showUps.length && showUps[i] != ''; ++i) {
+                    if (NewUpNos.indexOf(showUps[i]) < 0) {
+                        NewUpNos.push(showUps[i]);
+                    }
+                }
+
+                GridUP_Panel.NewUpNos = NewUpNos;
+
+                // 更新model 的列
+                var p_fields = [
+                    { name: 'prd_no', type: 'string' },
+                    { name: 'itm', type: 'string' },
+                    { name: 'wp_no', type: 'string' },
+                    { name: 'dep_no', type: 'string' },
+                    { name: 'dep_name', type: 'string' },
+
+                    { name: 'name', type: 'string' },
+                    { name: 'pic_num', type: 'number', defaultValue: 2 },
+                    { name: 'is_cutwp', type: 'bool', convert: commonVar.ConvertBool },
+                    { name: 'is_pswp', type: 'bool', convert: commonVar.ConvertBool },
+                    { name: 'wq_type', type: 'string', defaultValue: 'size_qty' },
+                    { name: 'is_size_control', type: 'bool', convert: commonVar.ConvertBool },
+                    { name: 'color_different_price', type: 'bool', convert: commonVar.ConvertBool },  //11.28加
+                    { name: 'save_material_award', type: 'bool', convert: commonVar.ConvertBool },    //17.2.4 加
+                    { name: 'state', type: 'string', defaultValue: '0' },
+                    { name: 'wp_state', type: 'string', defaultValue: '' }
+                ];
+
+                //　重定义　Model.Field, Grid.columns
+                var GridCols = PrdtWPSet.GridCols();
+                for (var i = 0; i < NewUpNos.length && NewUpNos[i] != ''; ++i) {
+                    var up_no = NewUpNos[i];
+
+                    p_fields.push({ name: 'up_pic' + up_no, dataIndex: 'up_pic' + up_no, defaultValue: 0, type: 'number' });
+                    p_fields.push({ name: 'up_pair' + up_no, dataIndex: 'up_pair' + up_no, defaultValue: 0, type: 'number' });
+
+                    GridCols.push({
+                        up_no: up_no, header: '单价' + up_no, name: 'up' + up_no, dataIndex: 'up' + up_no,
+                        columns: [
+                            {
+                                up_no: up_no, header: '个单价', name: 'up_pic' + up_no, dataIndex: 'up_pic' + up_no,
+                                editor: {
+                                    xtype: 'numberfield', hideTrigger: true, decimalPrecision: 5,
+                                    spinDownEnabled: false,
+                                    spinUpEnabled: false,
+                                    onDownArrow: function () { }
+                                },
+                                renderer: rendererForNum,
+                                width: 80
+                            },
+                            {
+                                up_no: up_no, header: '对单价', name: 'up_pair' + up_no, dataIndex: 'up_pair' + up_no,
+                                editor: {
+                                    xtype: 'numberfield', hideTrigger: true, decimalPrecision: 5,
+                                    spinDownEnabled: false,
+                                    spinUpEnabled: false,
+                                    onDownArrow: function () { }
+                                },
+                                renderer: rendererForNum,
+                                width: 80
+                                //align: 'right'
+                            }
+                        ]
+                    });
+                }
+
+
+                PrdtWPSet.Model_PrdtWP = Ext.define('Model_PrdtWP', {
+                    extend: 'Ext.data.Model',
+                    fields: p_fields
+                });
+
+
+                gridPanel.store = Ext.create('Ext.data.Store', {
+                    model: PrdtWPSet.Model_PrdtWP,
+                    autoLoad: false,
+                    proxy: {
+                        type: 'ajax',
+                        url: '../../ASHX/Prdt_WP.ashx',
+                        reader: {
+                            type: 'json',
+                            root: 'items',
+                            totalProperty: 'total'
+                        }
+                    }
+                });
+
+                gridPanel.grid.reconfigure(gridPanel.store, GridCols);
+            }
+
+            UPGridEditor = Ext.create('Ext.grid.plugin.CellEditing', {
+                clicksToEdit: 1,
+                // nowRecord :
+                listeners: {
+                    beforeedit: function (editor, e, eOpts) {
+                        UPGridEditor.nowRecord = e.record;
+                    },
+                    edit: function (editor, e) {
+                        if (e.value == e.originalValue)
+                            return false;
+
+                        // 选择显示单价组
+                        if (e.field == 'active') {
+                            onGridWPAddUp(GetShowingUpNos(), true);
+                        }
+                        else
+                            e.record.commit();
+                    }
+                }
+            });
+
+
+            var onUPAdd = function () {
+                var NewRecs = GridUP_Panel.store.add(Ext.create('Model_PrdtWP_HFUP', {
+                    up_no: -1,
+                    start_dd: new Date(),
+                    end_dd: '2099-01-01',
+                    dep_no: '000000',
+                    cus_no: '',
+                    prd_no: '',
+                    n_man: GlobalVar.NowUserId,
+                    ActionType: -1
+                }));
+
+                var start_ddCol = GridUP_Panel.grid.headerCt.getComponent('start_dd');
+                GridUP_Panel.grid.getSelectionModel().select(NewRecs[0]);
+                GridUP_Panel.cellEditing.startEdit(NewRecs[0], start_ddCol);
+            }
+
+            var onUPDelete = function () {
+                var isAdminRoot = WpConfig.UserDefault[GlobalVar.NowUserId].root == '管理员';
+                if (isAdminRoot == false) {
+                    alert('你没有权限删除!');
+                    return;
+                }
+
+                var selectRecords = GridUP_Panel.grid.getSelectionModel().getSelection(),
+                    index = 0;
+                if (selectRecords.length > 0) {
+                    if (selectRecords[0].get('ActionType') == -1)
+                        GridUP_Panel.grid.store.remove(selectRecords[0]);
+                    else
+                        selectRecords[0].set('ActionType', -3);
+                }
+                else {
+                    CommMsgShow('提示', '请指定单价组');
+                    return false;
+                }
+            }
+
+            var onUPSave = function () {
+                var isAdminRoot = WpConfig.UserDefault[GlobalVar.NowUserId].root == '管理员';
+                if (isAdminRoot == false) {
+                    alert('你没有权限删除!');
+                    return;
+                }
+
+                if (!prdtBox.getValue()) {
+                    CommMsgShow('异常', '必须要选择好，货号', true);
+                    return false;
+                }
+                var idx = 0;
+                var op = { action: 'SaveHFUp', prd_no: prdtBox.getValue() };
+                GridUP_Panel.TakeGridDataToParams(op, '', '', null, function (rec) {
+                    if (!rec.get('start_dd')) {
+                        CommMsgShow('异常', '生效日期不能为空', true);
+                        return false;
+                    }
+                    else if (!rec.get('end_dd')) {
+                        CommMsgShow('异常', '生效日期不能为空', true);
+                        return false;
+                    }
+                    else if (rec.get('start_dd') > rec.get('end_dd')) {
+                        CommMsgShow('异常', '开始时间大于结束日期', true);
+                        return false;
+                    }
+
+                    return true;
+                });
+                op['Cnt'] = op['bodyCnt'];
+
+                Ext.Ajax.request({
+                    url: '../ASHX/Prdt_WP_UP.ashx',
+                    params: op,
+                    success: function (response) {
+                        if (response.responseText != 'true' && response.responseText != 'false')
+                            CommMsgShow('异常', response.responseText, true);
+                        else
+                            GridUP_Panel.store.loadPage(1);
+                    },
+                    failtrue: function () {
+                        CommMsgShow('异常', '末显示错误信息', true);
+                    }
+                });
+
+            }
+
+          
+            //var GetEditingUpNos = function () {
+            //    var s = GridUP_Panel.grid.getView().getStore(),
+            //        cnt = s.getCount(),
+            //        i = 0,
+            //        ups = [],
+            //        upObj = {};
+
+            //    for (; i < cnt; ++i) {
+            //        var rec = s.getAt(i);
+            //        var up_no = rec.get('up_no');
+            //        if (!upObj.up_no && up_no > 0) {
+            //            upObj.up_no = true;
+            //            ups.push(up_no);
+            //        }
+            //    }
+            //    //console.log({ ups: ups });
+            //    return ups;
+            //}
+
+            GetShowingUpNos = function () {
+                var ups = [],
+                    upStore = GridUP_Panel.grid.getView().getStore();
+                for (var i = 0; i < upStore.getCount() ; ++i) {
+                    if(upStore.getAt(i).get('active') == true)
+                        ups.push(upStore.getAt(i).get('up_no'));
+                }
+                return ups;
+            }
+
+
+            GridUP_Panel = Ext.create('PrdtWPSet.PrdtWPHFUPGrid', {
+                region: 'north',
+                title :'单价信息',
+                collapsible: true,
+                split: true,
+                collapseDirection: 'left',
+                cellEditing: UPGridEditor,
+                
+                //客户控件
+                getRowClass: function (record) {
+                    if (record.get('ActionType') == -1)
+                        return 'x-new-row';
+                    if (record.get('ActionType') == -3)
+                        return 'x-deleted-row';
+                    return '';
+                },
+                listeners: {
+                    MyRender: function () {
+                        GridUP_Panel.store.on('beforeload', function () {
+                            this.proxy.extraParams = {
+                                action: 'GetPrdtUps',
+                                prd_no: prdtBox.getValue()
+                            }
+                        });
+
+                        GridUP_Panel.grid.on('celldblclick', function (vthis, td, cellIndex, record, tr, rowIndex, e, eOpts) {
+                            var grid = GridUP_Panel.grid,
+                                col = grid.headerCt.getHeaderAtIndex(cellIndex);
+
+                            if (record.get('up_no') < 0)
+                                return false;
+
+                            if (col.dataIndex === 'active') {
+                                record.set('active', !record.get('active'));
+
+                                UPGridEditor.fireEvent('edit', UPGridEditor, { field: 'active', value: 'A', originalValue: 'B' });
+                                return true;
+                            }
+                        });
+
+                        //                var view = GridUP_Panel.grid.getView();
+                        //                var tip = Ext.create('Ext.tip.ToolTip', {
+                        //                    // The overall target element.
+                        //                    target: view.el,
+                        //                    delegate: view.itemSelector,
+                        //                    trackMouse: true,
+
+                        //                    listeners: {
+                        //                        beforeshow: function updateTipBody(tip) {
+                        //                            tip.update('双击显示单价组');
+                        //                        }
+                        //                    }
+                        //                });
+                    }
+                },
+                bbar: Ext.create('Ext.toolbar.Toolbar', {
+                    defaults: {
+                        width: 60,
+                        height: 35,
+                        style: {
+                            borderColor: 'black'
+                        }
+                    },
+                    items: [{
+                        text: '新建组',
+                        itemId: 'bntNew',
+                        handler: onUPAdd
+                    },
+                    {
+                        text: '删除组',
+                        itemId: 'bntDelete',
+                        handler: onUPDelete
+                    },
+                    {
+                        text: '保存',
+                        itemId: 'bntSave',
+                        handler: onUPSave
+                    }],
+                    listeners: {
+                        afterrender: function () {
+                            GridUP_Panel.btnNew = this.getComponent(0);
+                            GridUP_Panel.bntDelete = this.getComponent(1);
+                            GridUP_Panel.bntSave = this.getComponent(2);
+                        }
+                    }
+                })
+            });
+
+            /// 右边Grid 单价设置
+            GridUP_Panel.mon(GridUP_Panel, 'MyRender', function () {
+                var me = this;
+
+                GridUP_Panel.grid.on('itemdblclick', function (view, record, item, index, e, eOpts) {
+                    //showWin.show();
+                    // console.log( ' up的record ' ) ;
+                    // console.log(record );
+                });
+
+                GridUP_Panel.grid.on('itemcontextmenu', function (vthis, record, item, index, e, eOpts) {
+                    e.preventDefault();
+                });
+            });
+
+            onDeleteAllWp = function (btn) {
+             
+                if (btn != 'yes') {
+                    return false;
+                }
+
+                Ext.Ajax.request({
+                    url: '../ASHX/Prdt_WP.ashx',
+                    params: {
+                        action: 'DELETE_AllWps',
+                        prd_no: prdtBox.getValue()
+                    },
+                    success: function (response) {
+                        var json = Ext.JSON.decode(response.responseText);
+                        if (json.result == false) {
+                            CommMsgShow('异常', json.msg);
+                        }
+                        else
+                            gridBar.fireEvent('btnnew');
+                    }
+                });
+            }
+
+            onFormSave = function () {
+                var isAdminRoot = WpConfig.UserDefault[GlobalVar.NowUserId].root == '管理员';
+                if (isAdminRoot == false)
+                {
+                    alert('你没有权限更改!');
+                    return;
+                }
+
+                gridBar.setDisabled('btnsave,btndelete', true);
+                var op = {
+                    action: 'FormSave',
+                    Cnt: 0,
+                    n_man: GlobalVar.NowUserId
+                };
+
+                // 单价信息
+                var editingUPs = GetShowingUpNos();
+                op['UPCnt'] = editingUPs.length;
+                for (var i = 0; i < editingUPs.length; ++i) {
+                    op['up_no_' + i] = editingUPs[i];
+                }
+
+                var needStop = false;
+                if (northPanel.getForm().isValid() == true) {
+                    var idx = 0;
+                    gridPanel.store.each(function (rec) {
+                        if (rec.get('name') == '') {
+                            return true;
+                        }
+
+                        if (rec.get('dep_no') == '' || rec.get('dep_no') == '000000')
+                        {
+                            gridBar.setDisabled('btnsave,btndelete', false);
+                            gridPanel.grid.getSelectionModel().select([rec]);
+                            alert('请输入工序部门(并且不能选择根)!');
+                            needStop = true;
+                            return true;
+                        }
+
+                        rec.fields.each(function (field) {
+                            var itemName = field.name;
+                            op[itemName + '_' + idx] = rec.get(itemName);
+                        });
+                        ++idx;
+                    });
+
+                    op['Cnt'] = idx;
+                }
+
+                if (needStop == true) {
+                    return false;
+                }
+
+                northPanel.getForm().submit({
+                    url: PrdtWPSet.ashxUrl,
+                    params: op,
+                    success: function (form, action) {
+                        gridBar.setDisabled('btnsave,btndelete', false);
+                        var result = action.result;
+
+                        if (result.result == false) {
+                            alert(result.msg);
+                            // 10.16为何要设 wp_state ???
+                            ////var S = gridPanel.grid.store,
+                            ////cnt = S.getCount(),
+                            ////    i = 0;
+                            ////for (; i < cnt; ++i) {
+                            ////    S.getAt(i).set('wp_state', '1');
+                            ////    S.getAt(i).commit();
+                            ////}
+                            return false;
+                        }
+                        else {
+                            alert('保存成功');
+
+                            onFromSaveCallBack(result);
+                        }
+
+                        onGridWPAddUp(GetShowingUpNos(), false);
+                    },
+                    failure: function (form, action) {
+                        //alert('failure');
+                        CommMsgShow('异常', '');
+                        gridBar.setDisabled('btnsave,btndelete', false);
+                        //removeDirtyinDeleteRow();
+                    }
+                });
+            };
+
+
+
+            var onFromSaveCallBack = function (json) {
+                //console.log(json);
+                if (json.isNew == true)
+                    return;
+                
+                alert('更新计件单:' + json.allWps.length + '张,' + '\r\n' 
+                    + '失败:' + json.errWps.length + '张,\r\n'
+                    + '计件单明细:' + json.allWps.toString() + ',\r\n'
+                    + '失败明细:' + json.errWps.toString()
+                );
+            }
+
+
+            gridBar = Ext.create('ToolBarFormat', {
+                region: 'south',
+                btnDeleteTitle: '清除工序',
+                btnFindHidden: true,
+                listeners: {
+                    btnnew: function () {
+                        var bodyCnt = gridPanel.store.getCount();
+                        if (bodyCnt >= 0) {
+                            Ext.MessageBox.confirm('询问', '放弃修改吗?', function (btn) {
+                                if (btn != 'yes') {
+                                    return false;
+                                }
+                                onFormNew();
+                            });
+                        }
+                        else {
+                            onFormNew();
+                        }
+                    },
+                    btnfind: function () {
+
+                    },
+                    btndelete: function () {
+                        var isAdminRoot = WpConfig.UserDefault[GlobalVar.NowUserId].root == '管理员';
+                        if (isAdminRoot == false) {
+                            alert('你没有权限消空!');
+                            return;
+                        }
+
+                        var prd_no = prdtBox.getValue();
+                        Ext.MessageBox.confirm('询问', '清空货品' + prd_no + ' 所有的工序吗？', onDeleteAllWp);
+                    },
+                    btnsave: onFormSave,
+                    btnclose: function () {
+                        PageClose();
+                    },
+                    afterrender: function () {
+                        gridBar.setDisabled('btnsave,btndelete', false);
+                    }
+                }
+            });
+            
+            var Sizes = [],
+                PanelSizesItems = [];
+            for (var i = 0; i < GlobalVar.SizesStore.getCount() ; i++) {
+                var iRec = GlobalVar.SizesStore.getAt(i);
+                Sizes.push(iRec.get('size'));
+                PanelSizesItems.push({
+                    boxLabel: iRec.get('size'), name: 'Sizes', inputValue: iRec.get('size')
+                });
+            }
+
+
+            var PanelSizes = Ext.create('Ext.form.CheckboxGroup', {
+                vertical: true,
+                itemId:'SizeId',
+                columns: 3,
+                defaults: {
+                    padding: '0 0 0 10'
+                },
+                items: PanelSizesItems
+            });
+
+            var EnableToEditSizeControl = function (focusingRecord) {
+                var selectWps = [];
+                if (focusingRecord) {
+                    selectWps.push(focusingRecord);
+                }
+                else {
+                    selectWps = gridPanel.grid.getSelectionModel().getSelection();
+                }
+
+                if (selectWps.length <= 0) {
+                    return false;
+                }
+
+                var record = selectWps[0];
+                if (record.get('wp_state') == -1 || record.get('wp_state') == -3)
+                    return false;
+                if (record.get('is_size_control') == false)
+                    return false;
+
+                return true;
+            }
+
+            var LoadSizeControl = function (focusingRecord) {
+                var selectWps = [];
+                if (focusingRecord) {
+                    selectWps.push(focusingRecord);
+                }
+                else {
+                    selectWps = gridPanel.grid.getSelectionModel().getSelection();
+                }
+
+                if (selectWps.length <= 0) {
+                    return false;
+                }
+                //var selectWps = gridPanel.grid.getSelectionModel().getSelection();
+                var record = selectWps[0];
+                Ext.Ajax.request({
+                    type: 'post',
+                    url: commonVar.urlCDStr + 'ASHX/ashx_SizeControl.ashx',
+                    params: {
+                        action: 'GetPrdtWP_SizeControl',
+                        prd_no: record.get('prd_no'),
+                        wp_no: record.get('wp_no')
+                    },
+                    success: function (response) {
+                        var sizes = [];
+                        if (response.responseText && response.responseText.length > 0)
+                        {
+                            var arr = response.responseText.split(',');
+                            for (var i = 0; i < arr.length; i++) {
+                                sizes.push(arr[i]);
+                            }
+                        }
+
+                        viewport.getComponent('item3').getComponent('SizeFormId').getComponent('SizeId').setValue({
+                            Sizes: sizes
+                        });
+                    }
+                }); // request
+            }
+
+
+            var fnSaveSizeControl = function (wp_no, openEd) {
+                Ext.Ajax.request({
+                    type: 'post',
+                    url: '../ASHX/Prdt_WP.ashx',
+                    params: {
+                        action: 'SetSwitch',
+                        action_type: 'is_size_control',
+                        prd_no: prdtBox.getValue(),
+                        wp_no: wp_no,
+                        switch: (openEd ? 'T' : 'F')
+                    },
+                    success: function (response) {
+                        var resultJson = Ext.decode(response.responseText);
+                        if (resultJson.result == false) {
+                            alert(resultJson.msg);
+                        }
+                    }
+                });
+            }
+
+            gridPanel.grid.on('select', function (gridThis, record, index, eOpts) {
+                var disabled = !EnableToEditSizeControl(record);
+                fnSaveSizeControl(record.get('wp_no'), !disabled);
+                
+
+                viewport.getComponent('item3').getComponent('SizeFormId').setDisabled(disabled);
+                //加载已有的尺寸限制
+                if (disabled == false) {
+                    LoadSizeControl(record);
+                }
+                else {
+                    viewport.getComponent('item3').getComponent('SizeFormId').getComponent('SizeId').setValue({
+                        Sizes: []
+                    });
+                }
+            });
+           //CheckColumn无Change事件
+            //editor.on('edit', function (veditor, e) {
+            //    if (e.value == e.originalValue)
+            //        return false;
+
+            //    if (e.field == 'is_size_control') {
+            //        var disabled = !EnableToEditSizeControl();
+            //        viewport.getComponent('item3').getComponent('SizeFormId').setDisabled(disabled);
+            //    }
+            //});
+            
+
+            var SaveSizeControl = function () {
+                var isAdminRoot = WpConfig.UserDefault[GlobalVar.NowUserId].root == '管理员';
+                if (isAdminRoot == false) {
+                    alert('你没有权限!');
+                    return;
+                }
+
+                var selectWps = gridPanel.grid.getSelectionModel().getSelection();
+                if (selectWps.length <= 0) {
+                    alert(' 末选择工序!');
+                    return;
+                }
+                var wpRecord = selectWps[0];
+                if (wpRecord.get('wp_state') == 'NEWWP' || wpRecord.get('wp_state') == 'DROPWP') {
+                    alert('末保存的工序, 或者被标记为删除的工序,不能保存限制!');
+                    return;
+                }
+
+                Ext.Ajax.request({
+                    type: 'post',
+                    url:  commonVar.urlCDStr +'ASHX/ashx_SizeControl.ashx',
+                    params: {
+                        action: 'SetPrdtWP_SizeControl',
+                        prd_no: wpRecord.get('prd_no'),
+                        wp_no: wpRecord.get('wp_no'),
+                        sizes: PanelSizes.getValue()
+                    },
+                    success: function (response) {
+                        var json = Ext.JSON.decode(response.responseText);
+                        if(json.result == true){
+                            alert(' 保存限制成功!');
+                        }
+                        else {
+                            alert(' 保存失败! ' + json.msg);
+                        }
+                    }
+                }); // request
+                
+            }
+
+            function monitor(url, orderParams) { }
+
+            var viewport = Ext.create('Ext.Viewport', {
+                layout: 'border',
+                items: [
+                    northPanel,
+                    gridPanel,
+                    {
+                        xtype: 'panel',
+                        region: 'east',
+                        layout: 'border',
+                        itemId: 'item3',
+                        width: 400,
+                        maxWidth: 480,
+                        items: [
+                            GridUP_Panel, {
+                                region: 'center',
+                                itemId:'SizeFormId',
+                                xtype: 'form',
+                                title: '指定使用尺寸',
+                                layout: 'fit',
+                                heigth: 120,
+                                items: PanelSizes,
+                                bbar: [{
+                                    text: '保存指定',
+                                    height: 30,
+                                    handler: SaveSizeControl
+                                }]
+                            }
+                        ]
+                    },
+                    gridBar
+                ],
+                listeners: {
+                    afterrender: function (comp, eOpts) {
+                        var me = this;
+                        var pa = window.parent ? window.parent.Ext.getCmp('tabPanel') : null;
+                        //通知上级tab 这已加载完成
+
+                        if (pa) {
+                            var thisTabComp = pa.getComponent('Prdt_WP');
+
+                            if (thisTabComp) {
+                                thisTabComp.had_rendered = true;
+                                pa.on('SendOrder', monitor);
+                                pa.getComponent('Prdt_WP').fireEvent('had_rendered', monitor);
+
+                                PageClose = function () {
+                                    var pa = window.parent.Ext.getCmp('tabPanel');
+                                    //通知上级tab 这已加载完成
+                                    if (pa) {
+                                        pa.getComponent('Prdt_WP').fireEvent('letcloseme');
+                                    }
+                                } // PageClose
+
+                            }
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+</head>
+<body>
+    <form id="form1" runat="server">
+        <div></div>
+    </form>
+</body>
+</html>

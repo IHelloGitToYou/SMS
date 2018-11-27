@@ -1,0 +1,254 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title></title>
+    <script type="text/javascript">
+        var PAGE_Locaction = "Sys/Report_检查超数.html";
+        var PageClose;
+    </script>
+
+    <link href="../JS/resources/css/ext-all.css" rel="stylesheet" type="text/css" / >
+    <script src="../JS/ext-all.js?version=2" type="text/javascript"> </script>
+    <script src="../JS/Setting/DataModel.js?version=9"></script>
+    <script src="../JS/commonJSFn.js?version=18" type="text/javascript"> </script>
+    <script src="../JS/SMSCommonJS.js?version=20" type="text/javascript"> </script>
+    <script src="../JS/SunGridHeadYAOSELF.js?version=2" type="text/javascript"> </script>
+    <script src="../JS/新SunEditor.js?version=19"></script>
+    <script src="../JS/Setting/WpConfig.js?version=13"></script>
+    <meta charset="utf-8" / >
+    <script type="text/javascript">
+        Ext.onReady(function () {
+
+         Ext.define('Report_Model', {
+             extend: 'Ext.data.Model',
+             fields: [
+                { name: 'check_type', type: 'string' },
+                { name: 'plan_no', type: 'string' },
+                { name: 'name', type: 'string' },
+                { name: 'size_id', type: 'string' },
+                { name: 'prd_no', type: 'string' },
+                { name: 'size', type: 'string' },
+                { name: 'qty', type: 'string' },
+                { name: 'all_qty', type: 'string' },
+                { name: 'wp_no', type: 'string' },
+                { name: 'pic_num', type: 'string' },
+                { name: 'ceil_pair', type: 'string' },
+                { name: 'ceil_pic', type: 'string' },
+                { name: 'ceil_all_pair', type: 'string' },
+                { name: 'ceil_all_pic', type: 'string' },
+                { name: 'done_pair', type: 'string' },
+                { name: 'done_pic', type: 'string' }
+             ]
+         });
+
+         var OnSearch = function () {
+             GridStore.lastSearchFormParams = SearchPanel.getValues();
+             GridStore.loadPage(1, {
+                 params: {
+
+                 },
+                 callback: function () {
+                 }
+             });
+         }
+
+         var SearchPanel = Ext.create('Ext.form.Panel', {
+             region: 'north',
+             //title: '每日产能工资明细',
+             defaults: {
+                 labelAlign: 'right',
+                 width: 220,
+                 labelWidth: 60,
+                 margin: '5 5 5 0'
+             },
+             layout: {
+                 type: 'table',
+                 columns: 6
+             },
+             items: [{
+                 fieldLabel: '计划单日',
+                 labelWidth: 80,
+                 name: 'S_deliver_dd',
+                 itemId: 'S_deliver_dd',
+                 xtype: 'datefield',
+                 format: 'Y/m/d',
+                 value: GlobalVar.YearFirstDay
+             }, {
+                 fieldLabel: '~&nbsp&nbsp至&nbsp&nbsp',
+                 name: 'E_deliver_dd',
+                 itemId: 'E_deliver_dd',
+                 xtype: 'datefield',
+                 format: 'Y/m/d',
+                 value: GlobalVar.MouthLastDay
+             },{
+                 fieldLabel: '工序部门',
+                 name: 'wp_dep_no',
+                 itemId: 'wp_dep_no',
+                 xtype: 'MSearch_DeptWP',
+                 value: WpConfig.UserDefault[GlobalVar.NowUserId].wp_dep_no || '000000',
+                 allowBlank: true
+             }, {
+                 fieldLabel: '计划单号',
+                 name: 'plan_no',
+                 itemId: 'plan_no',
+                 xtype: 'textfield'
+             },{
+                 xtype: 'fieldcontainer',
+                 width: 300,
+                 colspan: 3,
+                 items: [{
+                     margin: '6 6 6 10',
+                     text: '查&nbsp&nbsp&nbsp&nbsp询',
+                     xtype: 'button',
+                     height: 30,
+                     width: 80,
+                     handler: OnSearch
+                 }, {
+                     xtype: 'button',
+                     height: 30,
+                     text: '导出',
+                     icon: '../JS/resources/MyImages/ms_excel.png',
+                     width: 90,
+                     margin: '0 5 0 5',
+                     handler: function () {
+                         GlobalVar.ToExcel(Grid, '工资明细表');
+                     }
+                 }]
+             }]
+         });
+
+         var GridStore = Ext.create('Ext.data.Store', {
+             model: 'Report_Model',
+             proxy: {
+                 type: 'ajax',
+                 url: commonVar.urlCDStr + 'ASHX/YG_CheckData.ashx?action=DoCheck',
+                 reader: {
+                     type: 'json'
+                 }
+             }
+         });
+
+         GridStore.on('beforeload', function (vStore, operation, eOpts) {
+             if (!GridStore.lastSearchFormParams)
+                 GridStore.lastSearchFormParams = SearchPanel.getValues();
+
+             if (!GridStore.getProxy().extraParams)
+                 GridStore.getProxy().extraParams = {};
+
+             Ext.apply(GridStore.getProxy().extraParams, GridStore.lastSearchFormParams);
+         });
+        
+
+         var Grid = Ext.create('Ext.grid.Panel', {
+             region: 'center',
+             sortableColumns: false,
+             rowLines: true,
+             layout: 'fit',
+             store: GridStore,
+             columns: [
+                 { xtype: 'rownumberer' },
+                 {
+                     name: 'check_type', dataIndex: 'check_type', text: '工序限制类型',
+                     renderer: function (v, m, rec) {
+                         if (v == 'all_size_qty')
+                             return '总-尺寸量';
+                         else if (v == 'size_qty')
+                             return '单-尺寸量';
+
+                         return '';
+                     },
+                     width: 100
+                 },
+                 { name: 'plan_no', dataIndex: 'plan_no', text: '计划单', width: 100 },
+                  {
+                      name: 'qty', dataIndex: 'qty', text: '尺寸计划(对)',
+                      align: 'right',
+                      renderer: function (v, m, rec) {
+                          if (!v)
+                              return '';
+                          return Ext.util.Format.number(v, '0.000');
+                      }, width: 120
+                  },
+                {
+                    name: 'all_qty', dataIndex: 'all_qty', text: '总计划(对)',
+                    align: 'right',
+                    renderer: function (v, m, rec) {
+                        if (!v)
+                            return '';
+                        return Ext.util.Format.number(v, '0.000');
+                    }, width: 120
+                },
+                 {
+                     name: 'prd_no', dataIndex: 'prd_no', text: '货品代号',
+                     width: 120
+                 },
+                 { name: 'name', dataIndex: 'name', text: '工序名', width: 150 },
+                 { name: 'size', dataIndex: 'size', text: '尺寸', width: 80 },
+                 { name: 'pic_num', dataIndex: 'pic_num', text: '个数/对', width: 100 },
+                 { name: 'ceil_pair', dataIndex: 'ceil_pair', text: '计划对数', width: 100 },
+                 { name: 'ceil_pic', dataIndex: 'ceil_pic', text: '计划个数', width: 100,hidden:true },
+                 { name: 'ceil_all_pair', dataIndex: 'ceil_pair', text: '总计划对数', width: 100 },
+                 { name: 'ceil_all_pic', dataIndex: 'ceil_pic', text: '总计划个数', width: 100,hidden:true },
+                 { name: 'done_pair', dataIndex: 'done_pair', text: '已录对数', width: 120 },
+                 { name: 'done_pic', dataIndex: 'done_pic', text: '已录个数', width: 120, hidden: true },
+                 {
+                     name: 'over_pair', dataIndex: 'over_pair', text: '超数(对)',
+                     align: 'right',
+                     renderer: function (v, m, rec) {
+                         v = rec.get('done_pair') - rec.get('ceil_pair');
+
+                         if (rec.get('check_type') == 'size_qty')
+                             return '单: ' + Ext.util.Format.number(v, '0.00');
+                         else
+                             return '';
+                     }, width: 120
+                 },
+                 {
+                     name: 'over_all_pair', dataIndex: 'over_all_pair', text: '超数(对)',
+                     align: 'right',
+                     renderer: function (v, m, rec) {
+                         v = rec.get('done_pair') - rec.get('ceil_all_pair');
+
+                         if (rec.get('check_type') == 'all_size_qty')
+                             return '总: ' + Ext.util.Format.number(v, '0.00');
+                         else
+                             return '';
+                     }, width: 120
+                 }
+             ]
+         });
+ 
+         function monitor() { }
+         var viewport = Ext.create('Ext.Viewport', {
+             layout: 'border',
+             items: [SearchPanel, Grid],
+             listeners: {
+                 afterrender: function (comp, eOpts) {
+                     var me = this;
+                     var pa = window.parent ? window.parent.Ext.getCmp('tabPanel') : null;
+                     if (pa) {
+                         var thisTabComp = pa.getComponent('Report_检查超数');
+
+                         if (thisTabComp) {
+                             thisTabComp.had_rendered = true;
+                             pa.on('SendOrder', monitor);
+                             pa.getComponent('Report_检查超数').fireEvent('had_rendered', monitor);
+                             PageClose = function () {
+                                 var pa = window.parent.Ext.getCmp('tabPanel');
+                                 if (pa) {
+                                     pa.getComponent('Report_检查超数').fireEvent('letcloseme');
+                                 }
+                             }
+                         }
+                     }
+                 }
+             }
+         });
+
+      
+     });
+    </script>
+</head>
+<body>
+</body>
+</html>
