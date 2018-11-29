@@ -89,6 +89,7 @@
     <Compile Include="Dal_YGGZ.cs" />
     <Compile Include="Dal_YGPJGZ.cs" />
     <Compile Include="DBHelper\SqlHelper.cs" />
+    <Compile Include="HideDataForCheck.cs" />
     <Compile Include="Material\Dal_Material.cs" />
     <Compile Include="Material\Dal_PrdtWpMaterial.cs" />
     <Compile Include="Material\Dal_WpQtyMaterial.cs" />

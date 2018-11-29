@@ -19,6 +19,8 @@ namespace SMS.Bus
                     size_id ,wp_no,sum(isnull(qty_pair,0)) as done_pair,sum(isnull(qty_pic,0)) as done_pic 
 	                Into #Done
                  from WPQty_B2 
+                 where 1=1 
+                      {3}
                  group by size_id,wp_no
                     
                  select 
@@ -40,7 +42,10 @@ namespace SMS.Bus
                         left join WorkPlan P ON P.plan_id = Z.plan_id
                         left join prdt_wp WP on WP.prd_no = P.prd_no 
                         left join #Done D on D.size_id = Z.size_id and D.wp_no = wp.wp_no
-	                    where  WP.wq_type = 'size_qty' and  P.deliver_dd >= '{0}' and P.deliver_dd <= '{1}' {2} 
+	                    where  WP.wq_type = 'size_qty' 
+                                and  P.deliver_dd >= '{0}' and P.deliver_dd <= '{1}' 
+                                {2}
+                               
                      ) as T
                      WHERE 
                       (done_pair > ceil_pair) or (done_pic > ceil_pic)
@@ -75,7 +80,17 @@ namespace SMS.Bus
                 sPlan = " And wp.dep_no = '" + wp_dep_no.Trim() + "'";
             }
 
-            return SqlHelper.ExecuteSql(string.Format(sql, S_deliver_dd.Date.ToString(), E_deliver_dd.Date.ToString(), sPlan));
+            string maxDateWhere = "";
+            if (HideDataForCheck.HideDate.HasValue == true)
+            {
+                maxDateWhere += " and jx_dd >= '" + HideDataForCheck.HideDate.Value + "'";
+            }
+            
+            return SqlHelper.ExecuteSql(string.Format(sql, 
+                S_deliver_dd.Date.ToString(),
+                E_deliver_dd.Date.ToString(),
+                sPlan,
+                maxDateWhere ));
         }
     }
 }

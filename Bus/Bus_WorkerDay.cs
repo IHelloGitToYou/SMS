@@ -1,4 +1,5 @@
-﻿using SMS.DBHelper;
+﻿using SMS.DAL;
+using SMS.DBHelper;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -21,6 +22,10 @@ namespace SMS.Bus
         {
             string sqlWhere = " {0}>= '" + S_jx_dd.ToShortDateString() + "'";
             sqlWhere += " and {0}<= '" + E_jx_dd.ToShortDateString() + "'";
+            if (HideDataForCheck.HideDate.HasValue == true)
+            {
+                sqlWhere += " and {0} >= '" + HideDataForCheck.HideDate.Value + "'";
+            }
 
             if (!string.IsNullOrEmpty(dep_no) && dep_no != "000000")
             {

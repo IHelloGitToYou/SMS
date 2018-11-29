@@ -370,6 +370,12 @@ namespace SMS.DAL
                 int wq_id = int.Parse(searchModel["wq_id"]);
                 sql += " and wq_id = " + wq_id;
             }
+
+            if (HideDataForCheck.HideDate.HasValue == true)
+            {
+                sql += " and jx_dd >= '" + HideDataForCheck.HideDate.Value + "'";
+            }
+
             //计薪单号, 计薪范围段 计划单号, 员工部门
             if (searchModel.ContainsKey("jx_no") && !string.IsNullOrEmpty(searchModel["jx_no"]))
             {

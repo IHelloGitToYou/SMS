@@ -208,6 +208,12 @@ namespace SMS.DAL
             {
                 strSql.Append(" where " + strWhere);
             }
+
+            if (HideDataForCheck.HideDate.HasValue == true)
+            {
+                strSql.AppendLine(" and js_dd >= '" + HideDataForCheck.HideDate.Value + "'");
+            }
+
             object obj = SqlHelper.ExecuteScalar(strSql.ToString());
             if (obj == null)
             {
@@ -248,6 +254,12 @@ namespace SMS.DAL
             {
                 strSql.Append(" WHERE " + strWhere);
             }
+
+            if (HideDataForCheck.HideDate.HasValue == true)
+            {
+                strSql.Append(" and T.JS_dd >= '" + HideDataForCheck.HideDate.Value + "'");
+            }
+
             strSql.Append(" ) TT");
             if (startIndex >= 0)
                 strSql.AppendFormat(" WHERE T.Row between {0} and {1}", startIndex, endIndex);

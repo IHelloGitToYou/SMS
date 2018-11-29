@@ -29,7 +29,11 @@ namespace SMS.Bus
             string sqlWhere = " and H.jx_dd>= '" + S_jx_dd + "'";
             sqlWhere += " and H.jx_dd<= '" + E_jx_dd + "'";
 
-           
+            if (HideDataForCheck.HideDate.HasValue == true)
+            {
+                sqlWhere += " and H.jx_dd >= '" + HideDataForCheck.HideDate.Value + "'";
+            }
+
             if (!string.IsNullOrEmpty(worker)) {
                 sqlWhere += " and (CASE WHEN B2S.worker is not null then B2S.worker else B.worker end)  = '" + worker + "'";
             }
@@ -59,6 +63,10 @@ namespace SMS.Bus
         {
             string sqlWhere = " and H.js_dd>= '" + S_js_dd + "'";
             sqlWhere += " and H.js_dd<= '" + E_js_dd + "'";
+            if (HideDataForCheck.HideDate.HasValue == true)
+            {
+                sqlWhere += " and H.js_dd >= '" + HideDataForCheck.HideDate.Value + "'";
+            }
 
             if (!string.IsNullOrEmpty(worker_dep_no) && worker_dep_no != "000000")
             {
