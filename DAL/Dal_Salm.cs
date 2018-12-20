@@ -35,9 +35,9 @@ namespace SMS.DAL
         {
             StringBuilder strSql = new StringBuilder();
             strSql.Append("insert into salm(");
-            strSql.Append("user_no,n_dd,e_man,e_dd,name,dep_no,in_dd,out_dd,type,contact,rem,@is_shebao, n_man");
+            strSql.Append("user_no,n_dd,e_man,e_dd,name,dep_no,in_dd,out_dd,type,contact,rem,is_shebao, n_man");
             strSql.Append(") values (");
-            strSql.Append("@user_no,@n_dd,@e_man,@e_dd,@name,@dep_no,@in_dd,@out_dd,@type,@contact,@rem,@is_shebao, @n_man");
+            strSql.Append("@user_no,@n_dd,@e_man,@e_dd,@name,@dep_no,@in_dd,@out_dd,@type,@contact,@rem,@is_shebao,@n_man");
             strSql.Append(") ");
 
             SqlParameter[] parameters = {
