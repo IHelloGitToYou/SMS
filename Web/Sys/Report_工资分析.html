@@ -22,6 +22,7 @@
                 extend: 'Ext.data.Model',
                 fields: [
                     { name: 'row_sort', type: 'int' },
+
                     //部门
                     //员工
                     //工资
@@ -35,7 +36,23 @@
                     { name: 'inscrease_range_money', type: 'number' },
                     { name: 'work_day', type: 'number' },
                     { name: 'day_money', type: 'number' },
-                    { name: 'day_money2', type: 'number' }
+                    { name: 'day_money2', type: 'number' },
+
+                    { name: 'A', type: 'number' },
+                    { name: 'B', type: 'number' },
+                    { name: 'D', type: 'number' },
+                    { name: 'money_shebao', type: 'number' },
+                    
+                    { name: 'money_shebao_msg', type: 'string' },
+                    { name: 'E', type: 'number' },
+                    { name: 'msg1', type: 'string' },
+                    { name: 'msg2', type: 'string' }
+                    //--生产工资		不包含车剪 + 计时有附加
+                    //--社保补贴		员工是否 社保人员 200
+                    //--车位剪线		add-sign = '车位剪线'
+                    //--剪线补贴+其他工资 
+                    //--	剪线补贴      车位剪线*0.25
+                    //--  其他工资      拼身*0.2 + 计时无附加
                 ]
             });
 
@@ -93,14 +110,16 @@
                     forceSelection: false,
                     localStoreSortByWorkerDeptNo: WpConfig.UserDefault[GlobalVar.NowUserId].user_dep_no || '000000',
                     value: ''
-                }, {
-                    xtype: 'checkbox',
-                    boxLabel: '仅部门小计',
-                    inputValue: 'true',
-                    name: 'onlySum',
-                    itemId: 'onlySumId',
-                    value: false
-                }, {
+                    },
+                    //{
+                    //xtype: 'checkbox',
+                    //boxLabel: '仅部门小计',
+                    //inputValue: 'true',
+                    //name: 'onlySum',
+                    //itemId: 'onlySumId',
+                    //value: false
+                    //},
+                    {
                     xtype: 'fieldcontainer',
                     width: 300,
                     items: [{
@@ -148,7 +167,7 @@
 
                 Ext.apply(GridStore.getProxy().extraParams, GridStore.lastSearchFormParams);
 
-                GridStore.getProxy().extraParams.onlySum = SearchPanel.getComponent('onlySumId').getValue() == true ? "true" : 'false';
+                GridStore.getProxy().extraParams.onlySum = false;// SearchPanel.getComponent('onlySumId').getValue() == true ? "true" : 'false';
             });
 
             var GetDigitFormat = function () {
@@ -185,8 +204,12 @@
                     { name: 'worker_dep_no', dataIndex: 'worker_dep_no', text: '生产部', renderer: GlobalVar.rdDeptName, width: 90 },
                     { name: 'worker', dataIndex: 'worker', text: '员工', width: 90 },
                     { name: 'worker', dataIndex: 'worker', text: '名称', renderer: GlobalVar.rdSalmName, width: 100 },
+
+                    { name: 'msg1', dataIndex: 'msg1', text: '出勤', renderer: function () { return 0; }, width: 80 },
+                    { name: 'msg2', dataIndex: 'msg2', text: '职位', renderer: function () { return ''; }, width: 80 },
+            
                     {
-                        name: 'range_money', dataIndex: 'range_money', text: '工资(元)',
+                        name: 'A', dataIndex: 'A', text: '生产工资',
                         align:'right',
                         renderer: function (v, m, rec) {
                             if (!v)
@@ -198,8 +221,8 @@
                         }, width: 160
                     },
                     {
-                        name: 'inscrease_range_money', dataIndex: 'inscrease_range_money', text: '加翻',
-                        align: 'right',
+                        name: 'E', dataIndex: 'E', text: '社保补贴2',
+                        align:'right',
                         renderer: function (v, m, rec) {
                             if (!v)
                                 return '';
@@ -210,38 +233,96 @@
                         }, width: 160
                     },
                     {
-                        name: 'work_day', dataIndex: 'work_day', text: '上班天数',
-                        align: 'right',
-                        renderer: function (v, m, rec) {
-                            if (!v)
-                                return '';
-                            return Ext.util.Format.number(v, '0.00');
-                        }, width: 90
-                    },
-                    {
-                        name: 'day_money', dataIndex: 'day_money', text: '平均日薪(天)',
-                        align: 'right',
+                        name: 'B', dataIndex: 'B', text: '车位剪线',
+                        align:'right',
                         renderer: function (v, m, rec) {
                             if (!v)
                                 return '';
                             if (rec.get('row_sort') == 2)
-                                return '部门平均: ' + Ext.util.Format.number(v, '0.00');
+                                return '部门小计: ' + Ext.util.Format.number(v, '0,000.00');
                             else
-                                return v;
+                                return Ext.util.Format.number(v, '0.00');
                         }, width: 160
                     },
                     {
-                        name: 'day_money2', dataIndex: 'day_money2', text: '平均日薪(加翻)',
-                        align: 'right',
+                        name: 'D', dataIndex: 'D', text: '剪线补贴+其他工资',
+                        align:'right',
                         renderer: function (v, m, rec) {
                             if (!v)
                                 return '';
                             if (rec.get('row_sort') == 2)
-                                return '部门平均: ' + Ext.util.Format.number(v, '0.00');
+                                return '部门小计: ' + Ext.util.Format.number(v, '0,000.00');
                             else
-                                return v;
+                                return Ext.util.Format.number(v, '0.00');
                         }, width: 160
-                    }
+                    },
+                     {
+                        name: 'money_shebao', dataIndex: 'money_shebao', text: '社保补贴',
+                        align:'right',
+                        renderer: function (v, m, rec) {
+                            if (!v)
+                                return '';
+                            if (rec.get('row_sort') == 2)
+                                return '部门小计: ' + Ext.util.Format.number(v, '0,000.00');
+                            else
+                                return Ext.util.Format.number(v, '0.00');
+                        }, width: 160
+                    },
+                    {
+                        name: 'money_shebao_msg', dataIndex: 'money_shebao_msg', text: '备注',
+                        align:'right',
+                        renderer: function (v, m, rec) {
+                            if (!v)
+                                return '';
+                            return v;
+                        }, width: 160
+                    },
+                    
+                    //{
+                    //    name: 'inscrease_range_money', dataIndex: 'inscrease_range_money', text: '加翻',
+                    //    align: 'right',
+                    //    renderer: function (v, m, rec) {
+                    //        if (!v)
+                    //            return '';
+                    //        if (rec.get('row_sort') == 2)
+                    //            return '部门小计: ' + Ext.util.Format.number(v, '0,000.00');
+                    //        else
+                    //            return Ext.util.Format.number(v, '0.00');
+                    //    }, width: 160
+                    //},
+                    //{
+                    //    name: 'work_day', dataIndex: 'work_day', text: '上班天数',
+                    //    align: 'right',
+                    //    renderer: function (v, m, rec) {
+                    //        if (!v)
+                    //            return '';
+                    //        return Ext.util.Format.number(v, '0.00');
+                    //    }, width: 90
+                    //},
+                    //{
+                    //    name: 'day_money', dataIndex: 'day_money', text: '平均日薪(天)',
+                    //    align: 'right',
+                    //    renderer: function (v, m, rec) {
+                    //        if (!v)
+                    //            return '';
+                    //        if (rec.get('row_sort') == 2)
+                    //            return '部门平均: ' + Ext.util.Format.number(v, '0.00');
+                    //        else
+                    //            return v;
+                    //    }, width: 160
+                    //},
+                    //{
+                    //    name: 'day_money2', dataIndex: 'day_money2', text: '平均日薪(加翻)',
+                    //    align: 'right',
+                    //    renderer: function (v, m, rec) {
+                    //        if (!v)
+                    //            return '';
+                    //        if (rec.get('row_sort') == 2)
+                    //            return '部门平均: ' + Ext.util.Format.number(v, '0.00');
+                    //        else
+                    //            return v;
+                    //    }, width: 160
+                    //}
                 ],
                 dockedItems: [{
                     xtype: 'pagingtoolbar',

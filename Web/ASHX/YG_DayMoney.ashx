@@ -66,7 +66,8 @@ public class YG_DayMoney : IHttpHandler
 
         if (action == "SearcInSumView".ToUpper())
         {
-            DataTable dt = bus.GetSumDayMoney_InH2(S_jx_dd, E_jx_dd, onlySum, worker_dep_no, worker);
+            //GetSumDayMoney_InH2
+            DataTable dt = bus.GetNewAnanlyz (S_jx_dd, E_jx_dd, worker_dep_no, worker);
             int total = dt.Rows.Count;
 
             DataTable Rdt = SunCommon_DataTablePaging.paging(dt, limit, page);

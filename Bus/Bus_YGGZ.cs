@@ -23,8 +23,7 @@ namespace SMS.Bus
         public string GetH2SearchWhere(DateTime S_jx_dd, DateTime E_jx_dd,  
                                         string worker, 
                                         string plan_no = "", 
-                                        string prd_no ="",
-                                        bool onlySheBao = false)
+                                        string prd_no ="")
         {
             string sqlWhere = " and H.jx_dd>= '" + S_jx_dd + "'";
             sqlWhere += " and H.jx_dd<= '" + E_jx_dd + "'";
@@ -48,10 +47,10 @@ namespace SMS.Bus
                 sqlWhere += " and H.prd_no = '" + prd_no + "' ";
             }
 
-            if (onlySheBao == true)
-            {
-                sqlWhere += " and salm.is_shebao = 'true' ";
-            }
+            //if (onlySheBao == true) //因查询效率太差,用加一个新临时表
+            //{
+            //    sqlWhere += " and salm.is_shebao = 'true' ";
+            //}
 
             return sqlWhere;
         }
@@ -96,7 +95,7 @@ namespace SMS.Bus
                                             string plan_no = "", string prd_no = "",
                                             bool onlySheBao = false)
         {
-            string sqlWhere = GetH2SearchWhere(S_jx_dd, E_jx_dd, worker, plan_no: plan_no, prd_no: prd_no, onlySheBao:onlySheBao);
+            string sqlWhere = GetH2SearchWhere(S_jx_dd, E_jx_dd, worker, plan_no: plan_no, prd_no: prd_no);
             string sqlJSWhere = GetHJS_SearchWhere(S_jx_dd, E_jx_dd, worker_dep_no, worker, onlySheBao:onlySheBao);
             string sqlWhere2 = "";
             if (!string.IsNullOrEmpty(worker_dep_no) && worker_dep_no != "000000")
@@ -149,7 +148,8 @@ namespace SMS.Bus
             sql.Append("        end add_sign,                                               ");
             sql.Append("        isnull(B.inscrease_percent, 0) as inscrease_percent,         ");
             sql.Append("        Case when B2S.worker is not null then B2S.share_percent else 100 end as share_percent ");
-            sql.AppendLine("    into #BT ");
+            sql.AppendLine(@"   ,salm.is_shebao
+		                     into #BT_BEFORE  ");
             sql.AppendLine(" from WPQty_B2 B ");
             sql.AppendLine("     inner join WPQty_H2 H    on B.wq_id = H.wq_id ");
             sql.AppendLine("     left join  WPQty_B2_Share B2S  on B2S.wqb_id = B.wqb_id ");
@@ -161,12 +161,26 @@ namespace SMS.Bus
             sql.AppendLine("     where  1=1  " + sqlWhere);
 
 
+            sql.AppendLine(@"   select dep_no,jx_dd,worker_dep_no,worker,plan_no, prd_no, plan_all_qty_pair,
+                                   size_qty_pair, size, wp_no, wp_name, 
+                                   plan_day_qty, day_qty_ut,  qty_pair, edit_ut, up_pair,day_money,add_sign, inscrease_percent,share_percent
+                                into #BT 
+                                from  #BT_BEFORE ");
+            if (onlySheBao == true)
+            {
+                sql.Append("    where is_shebao = 'true' ");
+            }
+
             sql.AppendLine("select ");
             sql.AppendLine("    *, case when inscrease_percent = 0 then 0 else day_money * (inscrease_percent / 100)end as inscrease_money ");
             sql.AppendLine("   into #DayDetail_onWP ");
             sql.AppendLine("from #BT ");
            
             sql.AppendLine("where  1=1 " + sqlWhere2);
+
+            
+            sql.AppendLine("drop table #BT_BEFORE ");                                                                                       
+            sql.AppendLine("drop table #BT        ");
             return sql;
         }
 
@@ -214,7 +228,15 @@ namespace SMS.Bus
             return SqlHelper.ExecuteSql(sql.ToString());
         }
 
-
+        /// <summary>
+        /// 旧的 工资分析  上班天数
+        /// </summary>
+        /// <param name="S_jx_dd"></param>
+        /// <param name="E_jx_dd"></param>
+        /// <param name="onlySumDept"></param>
+        /// <param name="worker_dep_no"></param>
+        /// <param name="worker"></param>
+        /// <returns></returns>
         public DataTable GetSumDayMoney_InH2(DateTime S_jx_dd, DateTime E_jx_dd, bool onlySumDept, string worker_dep_no, string worker)
         {
             Bus_WorkerDay busWorkerDqy = new Bus_WorkerDay();
@@ -537,7 +559,6 @@ namespace SMS.Bus
             sql.AppendLine("                                                                                                                      ");
             sql.AppendLine("                                                                                                                      ");
 
-
             sql.AppendLine("                select  3 as row_sort2, *from #DaySum_L4 ");
             sql.AppendLine("                union all ");
             sql.AppendLine("                 select ");
@@ -555,6 +576,77 @@ namespace SMS.Bus
             sql.AppendLine("                 ) as T ");
             sql.AppendLine("                 order by row_sort2, worker_dep_no, worker, row_sort ");
             return SqlHelper.ExecuteSql(sql.ToString());
+        }
+
+
+        public DataTable GetNewAnanlyz(DateTime S_jx_dd, DateTime E_jx_dd, string worker_dep_no, string worker, string plan_no = "", string prd_no = "")
+        {
+            StringBuilder sql = GetBaseData(S_jx_dd, E_jx_dd, worker_dep_no, worker, plan_no: plan_no, prd_no: prd_no, onlySheBao: false);
+            sql.Append(@"
+                    select 
+					    T4.*,
+					    case 
+                            when worker_dep_no like 'C%' then T4.A * 0.40 
+                            when worker_dep_no = 'SP' then T4.A * 0.30 
+                            when worker_dep_no = 'TA' then T4.A * 0.40 
+                            when worker_dep_no = 'TB' then T4.A * 0.40 
+                            when worker_dep_no = 'DA' then T4.A * 0.25 
+                            when worker_dep_no = 'Y' then T4.A * 0.37
+                            when worker_dep_no = 'S' then T4.A * 0.15
+                        else 0 end E
+					    into #DaySum_L1
+				    from(
+                        select T3.worker_dep_no, T3.dep_no, T3.worker, 
+	                            A + isnull((select sum(day_money) from #DayDetail_onJS where #DayDetail_onJS.worker = T3.worker and  add_sign = '有附加'),0) as A,
+					            T3.B, 
+					            isnull((select sum(day_money) from #DayDetail_onJS where #DayDetail_onJS.worker = T3.worker and  add_sign = ''),0) D,
+					            T3.money_shebao,
+					            case when T3.money_shebao > 0 then '' else '保险' end money_shebao_msg 
+			                from (
+                                select worker_dep_no, T2.dep_no, worker, 
+	                                SUM(ISNULL(money_1,0))  A,
+	                                SUM(ISNULL(money_2 ,0)) B, 
+	                                case when S.is_shebao = 'true' then 0 ELSE 300 end money_shebao,
+
+	                                SUM(ISNULL(money_3 ,0) + ISNULL(money_4 ,0)) D 
+
+                                from (
+	                                select 
+		                                worker_dep_no, T.dep_no, worker,
+
+		                                case when add_sign <> '车位剪线' then day_money + inscrease_money END as money_1  , 
+		                   
+		                                case when add_sign = '车位剪线' then day_money + inscrease_money END as money_2,
+                                        
+		                                case when add_sign = '车位剪线' then (day_money + inscrease_money )* 0.25  END as money_3,
+
+		                                case when add_sign = '拼身' then (day_money + inscrease_money ) * 0.2 END as money_4
+	   
+	                                from #DayDetail_onWP T
+	                                where  1=1  
+                                ) T2 
+                                left join Salm  S on S.user_no = T2.worker 
+                                group by worker_dep_no, T2.dep_no, worker  ,S.is_shebao
+			            ) T3
+				    )T4
+
+                    
+                      select * from (
+						select 1 row_sort, * from #DaySum_L1
+					
+						union all
+						select 
+							   2 row_sort, worker_dep_no,dep_no, '' worker, sum(A) A, Sum(B) B, sum(D) D, 
+							   sum(money_shebao) money_shebao, '' money_shebao_msg, sum(E) E 
+							   from #DaySum_L1
+								group by worker_dep_no,dep_no
+					) t
+					order by worker_dep_no,dep_no, row_sort,money_shebao_msg desc
+            
+            ");
+
+            return SqlHelper.ExecuteSql(sql.ToString());
+
         }
     }
 }
