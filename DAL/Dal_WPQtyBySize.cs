@@ -266,7 +266,35 @@ namespace SMS.DAL
             sql += " order by wq_id, worker ";
             return SqlHelper.ExecuteSql(sql);
         }
- 
+
+
+        readonly string StrSelectByPlanView = @" select 0 wqb_id , 0 wq_id , B2.worker, 
+                                            B2.prd_no,B2.wp_no, sum(qty_pic) as qty_pic, 
+                                            sum(qty_pair) as  qty_pair, B2.up_pic, B2.up_pair, 0 AS inscrease_percent,
+                                             (
+		                                        select top 1 B3.size_id from WPQty_b2 B3  
+		                                        left join WPQty_H2 H3 on H3.wq_id = B3.wq_id
+			                                         where H3.plan_no = '{0}' and H3.wp_dep_no='{1}' and H3.user_dep_no ='{2}'
+	                                          ) AS size_id, 
+                                              0 check_id from WPQty_b2 B2
+                            left join WPQty_H2 H2 on H2.wq_id = B2.wq_id
+                            where H2.plan_no = '{0}' and H2.wp_dep_no='{1}' and H2.user_dep_no ='{2}' {3}
+                            group by B2.worker, B2.prd_no,B2.wp_no, B2.up_pic, B2.up_pair
+                            order by B2.worker ";
+
+
+        public DataTable LoadBody(string plan_no, string wp_dep_no, string user_dep_no, DateTime? isSumByPlanView_StartDD, DateTime? isSumByPlanView_EndDD)
+        {
+            string where2 = "";
+            if(isSumByPlanView_StartDD!=null)
+                where2 += " and H2.jx_dd >= '" + isSumByPlanView_StartDD + "'";
+            if (isSumByPlanView_EndDD != null)
+                where2 += " and H2.jx_dd <= '" + isSumByPlanView_EndDD + "'";
+
+            string sql =  string.Format(StrSelectByPlanView, plan_no, wp_dep_no, user_dep_no, where2);
+            return SqlHelper.ExecuteSql(sql);
+        }
+
 
         public DataTable LoadBody_Share(int wq_id)
         {

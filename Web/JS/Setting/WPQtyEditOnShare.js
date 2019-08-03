@@ -292,7 +292,28 @@
                       FormUpdateRecord();
                       OnWQGridLayout();
                   }
-              }]
+                  }, {
+                      xtype: 'button',
+                      height: 30,
+                      text: '统计视图',
+                      margin: '0 5 0 5',
+                      handler: function () {
+                          PlanViewHelper.ShowWin(
+                              WQForm.getComponent('plan_no').getValue(),
+                              WQForm.getComponent('wp_dep_no').getValue(),
+                              WQForm.getComponent('user_dep_no').getValue());
+                      }
+                  },{
+                    xtype: 'button',
+                    height: 30,
+                    text: '导出',
+                    icon: '../JS/resources/MyImages/ms_excel.png',
+                    margin: '0 5 0 5',
+                    handler: function () {
+                        GlobalVar.ToExcel(WQGrid, '工资分析');
+                        //alert('功能末实现');
+                    }
+                }]
           },
           {
               fieldLabel: '员工部门*',

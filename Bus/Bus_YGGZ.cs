@@ -593,7 +593,11 @@ namespace SMS.Bus
                             when worker_dep_no = 'DA' then T4.A * 0.25 
                             when worker_dep_no = 'Y' then T4.A * 0.37
                             when worker_dep_no = 'S' then T4.A * 0.15
-                        else 0 end E
+                        else 0 end E,
+                        case when 
+							worker_dep_no like 'C%' then T4.B * 0.25 + T4.money_BODY * 0.2 + T4.D
+							else 
+							T4.D end D2    --真实的剪线补贴+其他工资
 					    into #DaySum_L1
 				    from(
                         select T3.worker_dep_no, T3.dep_no, T3.worker, 
@@ -601,15 +605,16 @@ namespace SMS.Bus
 					            T3.B, 
 					            isnull((select sum(day_money) from #DayDetail_onJS where #DayDetail_onJS.worker = T3.worker and  add_sign = ''),0) D,
 					            T3.money_shebao,
-					            case when T3.money_shebao > 0 then '' else '保险' end money_shebao_msg 
+					            case when T3.money_shebao > 0 then '' else '保险' end money_shebao_msg ,
+                                T3.money_BODY 
 			                from (
                                 select worker_dep_no, T2.dep_no, worker, 
 	                                SUM(ISNULL(money_1,0))  A,
 	                                SUM(ISNULL(money_2 ,0)) B, 
 	                                case when S.is_shebao = 'true' then 0 ELSE 300 end money_shebao,
 
-	                                SUM(ISNULL(money_3 ,0) + ISNULL(money_4 ,0)) D 
-
+                                    SUM(ISNULL(money_4 ,0))  money_BODY
+                                     
                                 from (
 	                                select 
 		                                worker_dep_no, T.dep_no, worker,
@@ -618,9 +623,7 @@ namespace SMS.Bus
 		                   
 		                                case when add_sign = '车位剪线' then day_money + inscrease_money END as money_2,
                                         
-		                                case when add_sign = '车位剪线' then (day_money + inscrease_money )* 0.25  END as money_3,
-
-		                                case when add_sign = '拼身' then (day_money + inscrease_money ) * 0.2 END as money_4
+		                                case when add_sign = '拼身' then (day_money + inscrease_money ) END as money_4
 	   
 	                                from #DayDetail_onWP T
 	                                where  1=1  
@@ -637,7 +640,7 @@ namespace SMS.Bus
 						union all
 						select 
 							   2 row_sort, worker_dep_no,dep_no, '' worker, sum(A) A, Sum(B) B, sum(D) D, 
-							   sum(money_shebao) money_shebao, '' money_shebao_msg, sum(E) E 
+							   sum(money_shebao) money_shebao, '' money_shebao_msg, 0 AS money_BODY, sum(E) E , sum(D2) AS D2
 							   from #DaySum_L1
 								group by worker_dep_no,dep_no
 					) t

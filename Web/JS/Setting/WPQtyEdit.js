@@ -1,4 +1,5 @@
 ﻿Ext.onReady(function () {
+    var FME = this;
     //计薪表头
     //WPQtyHeader_Model
     var isAdminRoot = WpConfig.UserDefault[GlobalVar.NowUserId].root == '管理员';
@@ -274,8 +275,59 @@
               xtype: 'MSearch_Salm',
               value: WpConfig.UserDefault[GlobalVar.NowUserId].user_no,
               allowBlank: false,
-              colspan:2
-          },
+              colspan:1
+            },
+            {
+                xtype: 'button',
+                height: 26,
+                width: 80,
+                text: '统计视图',
+                margin: '2 2 5 5',
+                handler: function () {
+                    PlanViewHelper.ShowWin(
+
+                        WQForm.getComponent('plan_no').getValue(),
+                        WQForm.getComponent('wp_dep_no').getValue(),
+                        WQForm.getComponent('user_dep_no').getValue(),
+                        function (PlanViewHelper2, record) {
+                            PlanViewHelper.IsSumByPlanView = true;
+                            WQGrid.btnSave.setDisabled(true);
+                            WQGrid.btnDelete.setDisabled(true);
+                            //随机找出一个计件单 
+                            //上下文 是WpQtyEdit.js
+                            WQGrid.setDisabled(true);
+                            //以防 事件触发
+                            SwitchUTIng = true;
+                            EditingWQ = Ext.create('WPQtyHeader_Model', record.getData());
+                            SetJXDDMinMax();
+
+                            WQForm.getForm().loadRecord(EditingWQ);
+                            WQForm.getComponent('plan_no').setRawValue(EditingWQ.get('plan_no'));
+                            SwitchUTIng = false;
+
+                            OnWQGridLayout();
+                        },
+                        function () {
+                            //console.log("normal" + WQGrid.getId() + "--" + Ext.getCmp(WQGrid.getId() + '-normal').getId());
+                            var sheetName = '';
+                            if (PlanViewHelper.IsSumByPlanView)
+                                sheetName += '统计-';
+                            else
+                                sheetName += '明细-';
+
+                            sheetName += WQForm.getComponent('plan_no').getValue()
+                                + '-' + WQForm.getComponent('user_dep_no').getValue()
+                                + '-' + WQForm.getComponent('wp_dep_no').getValue();
+
+                            GlobalVar.ToExcel(WQGrid, sheetName, window, {
+                                normalGrid: Ext.getCmp(WQGrid.getId() + '-normal'),
+                                lockGrid: Ext.getCmp(WQGrid.getId() + '-locked')
+                            });
+                        },
+                        FME
+                    );
+                }
+            },
           {
               fieldLabel: '计划单&nbsp&nbsp&nbsp',
               name: 'plan_no',
@@ -347,7 +399,10 @@
                   text: '新建单据',
                   margin: '0 5 0 5',
                   handler: function () {
-                       
+                      PlanViewHelper.IsSumByPlanView = false;
+                      WQGrid.btnSave.setDisabled(false);
+                      WQGrid.btnDelete.setDisabled(false);
+
                       OnFormInit();
                       WQGridLayoutStore.removeAll();
                       WQGrid.setDisabled(true);
@@ -363,7 +418,7 @@
 
                       //WQGrid.setDisabled(false);
                   }
-              }]
+                  }]
           },
           {
               fieldLabel: '工序部门',
@@ -498,10 +553,19 @@
         else
             OnSetReadOnlyOnUpdateing(true);
 
+        
+
+
         var searchParams = {};
         Ext.apply(searchParams, EditingWQ.getData());
         searchParams.action = 'LoadWQLayoutData';
         searchParams.NowUserId = GlobalVar.NowUserId;
+        ////2019-08-02 增加 按计划单统计视图
+        if (PlanViewHelper.IsSumByPlanView == true) {
+            searchParams.IsSumByPlanView = true;
+            searchParams.IsSumByPlanView_StartDD = PlanViewHelper.startdd.getValue();
+            searchParams.IsSumByPlanView_EndDD =PlanViewHelper.enddd.getValue();
+        }
 
         Ext.Ajax.request({
             type: 'post',
@@ -781,10 +845,18 @@
         }
     }
 
-    var RowEditorRenderer = function (v, m, rec, rowIndex, colIndex,store, view) {
-        var type = rec.get('row_type'),
-            //用了LockColumn 要用这个才准
-            field = view.getHeaderAtIndex(colIndex).dataIndex;// WQGrid.headerCt.getHeaderAtIndex(colIndex).dataIndex;
+    var RowEditorRenderer = function (v, m, rec, rowIndex, colIndex, store, view) {
+        if (!m)
+            m = {};
+
+        if (PlanViewHelper.IsSumByPlanView == true) {
+            m.tdAttr = 'style="font-weight:bold"';
+        }
+
+        var type = rec.get('row_type');
+         //用了LockColumn 要用这个才准 -normal Grid
+        var field = view.getHeaderAtIndex(colIndex).dataIndex;
+
 
         //console.log([field, dataIndex]);
         if (type == 'SALM' || type == 'ALL_QTY' || type == 'ALL2_QTY' || type == 'TABLE_SUM_QTY' || type == 'UserDeptALL_QTY') {
@@ -815,6 +887,7 @@
             //审核中:黄色, 审核同意:绿色, 审核不同意:红色.
             if (field.indexOf("wp_") == 0) {
                 var wp_no = field.substr('wp_'.length, 10);
+
                 return LayoutUPColumnColor(wp_no, v, m);
             }
         }
@@ -831,6 +904,8 @@
     //{ value: 'PLAN', "name": "2.计划量" },
     //{ value: 'FINISH-PLAN', "name": "3.完成量->计划量" }
     var LayoutFinishQtyHtml_ALL_QTY = function (tdMate, wp_no, qty) {
+        if (!tdMate)
+            tdMate = {};
         var layoutFinish = WQForm.getComponent('layout_finish').getValue();
         
         var qtyA_finish = 0.00, qtyA_plan = 0.00;
@@ -838,7 +913,7 @@
         if (EditingWQ.get('edit_ut') == 1)
             qtyA_plan = EditingWQ.get('plan_size_qty');
         else
-            qtyA_plan = EditWQGridData[wp_no].pic_num * EditingWQ.get('plan_size_qty')
+            qtyA_plan = EditWQGridData[wp_no].pic_num * EditingWQ.get('plan_size_qty');
 
         qtyA_finish = qty;
         if (layoutFinish == 'FINISH') {
@@ -863,6 +938,9 @@
     }
 
     var LayoutFinishQtyHtml_ALL2_QTY = function (tdMate, wp_no, qty) {
+        if (!tdMate)
+            tdMate = {};
+
         var layoutFinish = WQForm.getComponent('layout_finish').getValue();
         var qtyA_finish = 0.00, qtyA_plan = 0.00;
         //计算尺寸计划量,与完工量
@@ -888,16 +966,26 @@
     }
 
     var LayoutFinishColor = function (plan_qty, finish_qty, qtyContent) {
+        var partStyle1 = "";
+        if (PlanViewHelper.IsSumByPlanView == true) {
+            partStyle1 = 'font-weight:bold;';
+        }
+
         if (finish_qty > plan_qty)
-            return 'style=" background-color: Red ;color :Black ;"';
+            return 'style=" background-color:Red;color:Black;' + partStyle1 + '"';
         else if (finish_qty == plan_qty)
-            return 'style=" background-color: Green"';
+            return 'style=" background-color:Green;' + partStyle1 + '"';
         else
-            return '';
+            return 'style="'+partStyle1+'"';
     }
      
 
     var LayoutUPColumnColor = function (wp_no, v, meta) {
+        var partStyle1 = "";
+        if (PlanViewHelper.IsSumByPlanView == true) {
+            partStyle1 = 'font-weight:bold;';
+        }
+
         var had = false;
         var resContent = v;
         var edit_ut = EditingWQ.get('edit_ut');
@@ -905,15 +993,15 @@
         JXCheckStore.findBy(function (qRec) {
             if (qRec.get('wp_no') == wp_no) {
                 if (qRec.get('check_state') == 0) {
-                    meta.tdAttr = 'style=" background-color: Yellow ;color :Black ;"';
+                    meta.tdAttr = 'style=" background-color: Yellow ;color :Black;' + partStyle1 + '"';
                     resContent = v + '申->' + qRec.get(edit_ut == 1 ? 'ask_up_pair' : 'ask_up_pic');
                 }
                 else if (qRec.get('check_state') == 1) {
-                    meta.tdAttr = 'style=" background-color: Green ;color :Black ;"';
+                    meta.tdAttr = 'style=" background-color: Green ;color :Black;' + partStyle1 + '"';
                     resContent = '已调->' + qRec.get(edit_ut == 1 ? 'ask_up_pair' : 'ask_up_pic');
                 }
                 else if (qRec.get('check_state') == 2) {
-                    meta.tdAttr = 'style=" background-color: Red ;color: Black ;"';
+                    meta.tdAttr = 'style=" background-color: Red ;color: Black ;' + partStyle1 + '"';
                     resContent = '驳回->' + v;
                 }
                 had = true;
@@ -921,7 +1009,7 @@
         });
 
         if (had == false) {
-            meta.tdAttr = '';
+            meta.tdAttr = 'style="' + partStyle1 + '"';
         }
 
         return resContent + '(' + (edit_ut == 1 ? '对' : '个') + ')';
@@ -955,7 +1043,7 @@
             loadeds: []
         };
         
-        for (var i = 0; i < WQDetailStore.getCount() ; ++i) {
+        for (var i = 0; i < WQDetailStore.getCount(); ++i) {
             var rec = WQDetailStore.getAt(i);
             var wqb_id = rec.get('wqb_id');
             var worker = rec.get('worker');
@@ -1143,7 +1231,7 @@
         
         var isNew = EditingWQ.get('wq_id') < 0;
 
-        for (var i = 0; i < WQPrdtWPStore.getCount() ; ++i) {
+        for (var i = 0; i < WQPrdtWPStore.getCount(); ++i) {
             var rec = WQPrdtWPStore.getAt(i),
                 __wp_no = rec.get('wp_no');
 
@@ -1457,7 +1545,7 @@
         ////alert('EditWQGridData');
         OnLayoutContent();
         UpdateTableSumAndFinsishRecord();
-        SwitchUTIng = false
+        SwitchUTIng = false;
     }
 
     var OnWQGridLayout = function () {
@@ -1916,7 +2004,7 @@
                   }
             },
             '-',
-            { text: '删&nbsp&nbsp&nbsp&nbsp除', icon: '../JS/resources/MyIcon/icon_delete.png', height: 30, width: 80, handler: OnFormDelete },
+            { text: '删&nbsp&nbsp&nbsp&nbsp除', icon: '../JS/resources/MyIcon/icon_delete.png', itemId: 'btnDelete', height: 30, width: 80, handler: OnFormDelete },
             {
                 text: '添加行',  height: 30, width: 80, hidden: !IsShareTable, handler: function () {
                     fnShowDialogToNewSalmRecord();
@@ -1929,11 +2017,40 @@
                 handler: function () {
                     SearchPanel.expand();
                 }
+            },
+            {
+                xtype: 'button',
+                height: 30,
+                text: '导&nbsp&nbsp出',
+                icon: '../JS/resources/MyImages/ms_excel.png',
+                margin: '0 5 0 5',
+                handler: function () {
+
+                    console.log("normal" + WQGrid.getId() + "--" + Ext.getCmp(WQGrid.getId() + '-normal').getId());
+                    var sheetName = '';
+                    if (PlanViewHelper.IsSumByPlanView)
+                        sheetName += '统计-';
+                    else
+                        sheetName += '明细-';
+
+                    sheetName +=  WQForm.getComponent('plan_no').getValue()
+                                    + '-' + WQForm.getComponent('user_dep_no').getValue()
+                                    + '-' + WQForm.getComponent('wp_dep_no').getValue();
+
+                    GlobalVar.ToExcel(WQGrid, sheetName, window, {
+                        normalGrid: Ext.getCmp(WQGrid.getId() + '-normal'),
+                        lockGrid: Ext.getCmp(WQGrid.getId() + '-locked')
+                    });
+
+
+                }
             }
         ],
         listeners: {
             boxready: function () {
                 this.btnSave = this.getDockedComponent(0).getComponent('btnSave');
+                this.btnDelete = this.getDockedComponent(0).getComponent('btnDelete');
+                
                 ///console.log(this.btnSave);
                 if (IsShareTable == true && !WQGrid.containerMenu) {
                     WQGrid.containerMenu = Ext.create('Ext.menu.Menu', {
@@ -2580,6 +2697,12 @@
                 listeners: {
                     itemdblclick: function (gridThis, record, item, index, e, eOpts) {
                         WQGrid.setDisabled(true);
+                        if (PlanViewHelper.IsSumByPlanView == true) {
+                            OnFormInit();
+                            PlanViewHelper.IsSumByPlanView = false;
+                            WQGrid.btnSave.setDisabled(false);
+                            WQGrid.btnDelete.setDisabled(false);
+                        }
                         //以防 事件触发
                         SwitchUTIng = true;
                         EditingWQ = Ext.create('WPQtyHeader_Model', record.getData());

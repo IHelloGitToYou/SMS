@@ -50,7 +50,7 @@ public class ashx_WPQtyEdit : IHttpHandler
             searchModel["cus_no"] = Request["cus_no"];
             searchModel["TableType"] = Request["TableType"];
 
-            searchModel["query_prd_no"] = Request["query_prd_no"];    
+            searchModel["query_prd_no"] = Request["query_prd_no"];
             searchModel["IsShareTable"] = bool.Parse(Request["IsShareTable"].ToLower()).ToString().ToLower();
 
 
@@ -138,6 +138,11 @@ public class ashx_WPQtyEdit : IHttpHandler
                 ISWQB = bool.Parse(Request["ISWQB"].ToLower());
             }
 
+            //2019-08-02 增加 按计划单统计视图
+            bool IsSumByPlanView = false;
+            if(!string.IsNullOrEmpty(Request["IsSumByPlanView"]))
+                IsSumByPlanView = bool.Parse(Request["IsSumByPlanView"]);
+
             int wq_id = int.Parse(Request["wq_id"]);
             bool IsNewing = wq_id < 0;
             string jx_no = Request["jx_no"];
@@ -214,7 +219,22 @@ public class ashx_WPQtyEdit : IHttpHandler
 
             if (IsNewing == false)
             {
-                dtWQDetail = bus.LoadBody(wq_id);
+                if(IsSumByPlanView)
+                {
+                    string wp_dep_no = Request["wp_dep_no"];
+                    DateTime? isSumByPlanView_StartDD = null;
+                    DateTime? isSumByPlanView_EndDD = null;
+
+                    if (!string.IsNullOrEmpty(Request["IsSumByPlanView_StartDD"]))
+                         isSumByPlanView_StartDD = DateTime.Parse(Request["IsSumByPlanView_StartDD"]).Date;
+                    if (!string.IsNullOrEmpty(Request["IsSumByPlanView_EndDD"]))
+                         isSumByPlanView_EndDD = DateTime.Parse(Request["IsSumByPlanView_EndDD"]).Date;
+
+
+                    dtWQDetail = bus.LoadBody(plan_no, wp_dep_no, user_dep_no,isSumByPlanView_StartDD ,isSumByPlanView_EndDD);
+                }
+                else
+                    dtWQDetail = bus.LoadBody(wq_id);
                 dtWQDetailSharePercent = bus.LoadBody_Share(wq_id);
             }
 

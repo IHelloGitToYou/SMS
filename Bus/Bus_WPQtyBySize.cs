@@ -688,6 +688,11 @@ namespace SMS.Bus
             return Dal.LoadBody(wq_id);
         }
 
+        public DataTable LoadBody(string plan_no, string wp_dep_no, string user_dep_no, DateTime? isSumByPlanView_StartDD, DateTime? isSumByPlanView_EndDD)
+        {
+            return Dal.LoadBody(plan_no, wp_dep_no, user_dep_no, isSumByPlanView_StartDD, isSumByPlanView_EndDD);
+        }
+
         public DataTable LoadBody_Share(int wq_id)
         {
             return Dal.LoadBody_Share(wq_id);

@@ -18,14 +18,14 @@ Ext.Ajax.request({
         GlobalVar.MouthLastDay = GlobalVar.EndDD = Ext.Date.getLastDateOfMonth(GlobalVar.ServerDate);
         var NowMouth = (GlobalVar.ServerDate).getMonth();
         
-        if (GlobalVar.ServerDate.getDate() >= 26) {
-            GlobalVar.MouthFirstDay.setMonth(NowMouth, 26);
-            GlobalVar.MouthLastDay.setMonth(NowMouth + 1, 25);
-        }
-        else {
-            GlobalVar.MouthFirstDay.setMonth(NowMouth - 1, 26);
-            GlobalVar.MouthLastDay.setMonth(NowMouth, 25);
-        }
+        //if (GlobalVar.ServerDate.getDate() >= 26) {
+        //    GlobalVar.MouthFirstDay.setMonth(NowMouth, 26);
+        //    GlobalVar.MouthLastDay.setMonth(NowMouth + 1, 25);
+        //}
+        //else {
+        //    GlobalVar.MouthFirstDay.setMonth(NowMouth - 1, 26);
+        //    GlobalVar.MouthLastDay.setMonth(NowMouth, 25);
+        //}
         
         GlobalVar.YearFirstDay = Ext.Date.parse(json.ServerDate, "Y/m/d");
         GlobalVar.YearFirstDay.setMonth(0, 1);
@@ -550,11 +550,12 @@ GlobalVar.DblClickOpenTable = function (view, record) {
 }
 
 //导出到Excel的方法 1.gridToHtml 
-GlobalVar.gridToHtml= function (gridObj) {
-    var T = gridObj.getView().getHeaderCt();
+GlobalVar.gridToHtml= function (gridObj, fnRendererScore, GridLockAndNomarls) {
+    var T = gridObj.getView().getHeaderCt != null ? gridObj.getView().getHeaderCt() : gridObj.getView().headerCt;
+
     var cmObj = T,
-    cols = cmObj.getVisibleGridColumns(),
-    TopCols = T.getGridColumns();
+        cols = GlobalVar.GetVisiableColumns(cmObj.getGridColumns()),
+        TopCols = GlobalVar.GetVisiableColumns(T.getGridColumns());
     var storeObj = gridObj.getStore();
     var dom_room, dom_table, dom_thead, dom_tr, dom_td, dom_tbody, dom_txt;
     dom_room = document.createElement('div');
@@ -565,7 +566,8 @@ GlobalVar.gridToHtml= function (gridObj) {
     dom_trB = document.createElement('tr');
 
     var hadGroupCol = true,
-    AddedGroupColIds = {};
+        AddedGroupColIds = {},
+        dataIndexBelongGridView = {};
     //查是不是一个分组Grid 
     for (var i = 0; i < TopCols.length; ++i) {
         var colObj = TopCols[i];
@@ -662,6 +664,7 @@ GlobalVar.gridToHtml= function (gridObj) {
         for (i = 0; i < storeCnt; i++) {
             dom_tr = document.createElement('tr');
             var rec = storeObj.getAt(i);
+            var recNodeOf_TR= gridObj.getView().getNode(i);
              
             for (var j = 0; j < cols.length; j++) {
                 var txt = '',
@@ -675,7 +678,6 @@ GlobalVar.gridToHtml= function (gridObj) {
                     var colIdx = fnTempFindCol_Index(rec.fields, dataIndex);
                     if (colIdx > 0)
                         ModelFieldsObjs[dataIndex] = rec.fields[colIdx];
-
                     /// ModelFieldsObjs[dataIndex] = rec.fields.get(dataIndex); //5.00不支持
                 }
                 dom_td = document.createElement('td');
@@ -686,7 +688,40 @@ GlobalVar.gridToHtml= function (gridObj) {
                 else if(cols[j].xtype == 'checkcolumn')
                     txt = value ? 'T' : '';
                 else if (cols[j].renderer) {
-                    txt = cols[j].renderer(value, null, rec);
+                    try {
+                        var tdMate = recNodeOf_TR.children[j];
+                        var gridView = null;
+                        if (!dataIndexBelongGridView[dataIndex]) {
+                            gridView = GlobalVar.GetRealGridView(GridLockAndNomarls, gridObj, dataIndex);
+                            dataIndexBelongGridView[dataIndex] = gridView;
+
+                            //console.log(dataIndex + " " + gridView.getGridColumns().length);
+                        }
+                        else {
+                            gridView = dataIndexBelongGridView[dataIndex];
+                        }
+
+                       var realColumnIndex = GlobalVar.GetRealGridViewColumnIndex(gridView, dataIndex)
+
+                        txt = Ext.callback(cols[j].renderer, fnRendererScore,
+                            [
+                                value,
+                                tdMate,
+                                rec,
+                                i,
+                                realColumnIndex,   //cols[j].getIndex() 
+                                storeObj,
+                                dataIndexBelongGridView[dataIndex]
+                            ]);
+
+                        //txt = cols[j].renderer(value, tdMate, 
+                        //    rec, i, cols[j].getIndex(),
+                        //    storeObj, gridObj.getView());
+                    }
+                    catch (ex) {
+                        console.log(ex);
+                        txt = value;
+                    }
                 }
                 else {
                     if (valType == 'boolean')
@@ -712,7 +747,9 @@ GlobalVar.gridToHtml= function (gridObj) {
                 txt = txt || '';
 
                 
-                dom_txt = document.createTextNode(txt.toString().replace("&nbsp", " ", "gi"));
+                dom_txt = document.createTextNode(
+                    GlobalVar.ReplaceEmptyHtmlContent(txt.toString()));
+                    //.replace("&nbsp", " ", "gi"));
 
                 dom_td.appendChild(dom_txt);
                 dom_tr.appendChild(dom_td);
@@ -727,11 +764,75 @@ GlobalVar.gridToHtml= function (gridObj) {
 
     dom_table.appendChild(dom_thead);
     dom_table.appendChild(dom_tbody);
-    dom_room.appendChild(dom_table)
+    dom_room.appendChild(dom_table);
     return dom_room;
 }
 
-GlobalVar.ToExcel = function (ExtGrid, sheetName) {
+//GridLockAndNomarls= {
+//    normalGrid: Ext.getCmp(WQGrid.getId() + '-normal'),
+//    lockGrid: Ext.getCmp(WQGrid.getId() + '-locked')
+//}
+GlobalVar.GetRealGridView = function (GridLockAndNomarls, MainGrid, dataIndex) {
+    if (!GridLockAndNomarls)
+        return MainGrid.getView();
+
+    if (GridLockAndNomarls.lockGrid && GridLockAndNomarls.normalGrid) {
+        var get = false;
+        Ext.Array.each(GridLockAndNomarls.lockGrid.getView().getGridColumns(), function (column, index) {
+            if (column.dataIndex == dataIndex) {
+                get = true;
+                return;
+            }
+        });
+
+        if (get)
+            return GridLockAndNomarls.lockGrid.getView();
+
+        Ext.Array.each(GridLockAndNomarls.normalGrid.getView().getGridColumns(), function (column, index) {
+            if (column.dataIndex == dataIndex) {
+                get = true;
+                return;
+            }
+        });
+
+        if (get)
+            return GridLockAndNomarls.normalGrid.getView();
+
+        console.log('导出异常找不到Excel视图！' + dataIndex);
+
+        return null;
+
+    }
+}
+
+
+GlobalVar.GetRealGridViewColumnIndex = function(RealGridView, dataIndex){
+    var inx = -1;
+    Ext.Array.each(RealGridView.getGridColumns(), function (column, index) {
+        if (column.dataIndex == dataIndex) {
+            inx = index;
+            return;
+        }
+    });
+
+    return inx;
+}
+
+GlobalVar.GetVisiableColumns = function (Columns) {
+    var array = [];
+    Ext.Array.each(Columns, function (column, index) {
+        if (!column.hidden) {
+            array.push(column);
+        }
+    });
+
+    return array;
+}
+//有固定列的表格，需要这参数 ，因RenderCell中View是错误的。GridLockAndNomarls= {
+//    normalGrid: Ext.getCmp(WQGrid.getId() + '-normal'),
+//    lockGrid: Ext.getCmp(WQGrid.getId() + '-locked')
+//}
+GlobalVar.ToExcel = function (ExtGrid, sheetName, fnRendererScore, GridLockAndNomarls) {
     var me = this;
     var tableToExcel = (function () {
         var uri = 'data:application/vnd.ms-excel;base64,',
@@ -749,13 +850,23 @@ GlobalVar.ToExcel = function (ExtGrid, sheetName) {
         }
     })();
 
-    var gridHtml = GlobalVar.gridToHtml(ExtGrid);
+    var gridHtml = GlobalVar.gridToHtml(ExtGrid, fnRendererScore, GridLockAndNomarls);
     //document.getElementById('divHide').innerHTML = gridHtml.innerHTML;
     //console.log(gridHtml.innerHTML);
     tableToExcel(gridHtml.innerHTML, sheetName || 'sheet1');
 
     gridHtml = '';
     delete gridHtml;
+}
+
+
+GlobalVar.ReplaceEmptyHtmlContent = function (txt) {
+    txt = txt || '';
+    while (txt.search("&nbsp") >= 0) {
+        txt = txt.toString().replace("&nbsp", " ", "gi");
+    }
+
+    return txt;
 }
 
 ///Store数据成Json
