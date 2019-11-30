@@ -550,7 +550,7 @@ GlobalVar.DblClickOpenTable = function (view, record) {
 }
 
 //导出到Excel的方法 1.gridToHtml 
-GlobalVar.gridToHtml= function (gridObj, fnRendererScore, GridLockAndNomarls) {
+GlobalVar.gridToHtml= function (gridObj, fnRendererScore, GridLockAndNomarls, fnBeforeGenarateExcel) {
     var T = gridObj.getView().getHeaderCt != null ? gridObj.getView().getHeaderCt() : gridObj.getView().headerCt;
 
     var cmObj = T,
@@ -564,6 +564,10 @@ GlobalVar.gridToHtml= function (gridObj, fnRendererScore, GridLockAndNomarls) {
     dom_tbody = document.createElement('tbody');
     dom_trA = document.createElement('tr');
     dom_trB = document.createElement('tr');
+
+    if (fnBeforeGenarateExcel)
+        fnBeforeGenarateExcel(dom_table, dom_thead, dom_tbody);
+
 
     var hadGroupCol = true,
         AddedGroupColIds = {},
@@ -681,6 +685,8 @@ GlobalVar.gridToHtml= function (gridObj, fnRendererScore, GridLockAndNomarls) {
                     /// ModelFieldsObjs[dataIndex] = rec.fields.get(dataIndex); //5.00不支持
                 }
                 dom_td = document.createElement('td');
+                //dom_td.setAttribute('style', 'word-wrap:break-word;');
+                //dom_td.width = 80;
 
                 if (isRownumberer === true) {
                     txt = i + 1;
@@ -742,14 +748,10 @@ GlobalVar.gridToHtml= function (gridObj, fnRendererScore, GridLockAndNomarls) {
                     if (txt == 0)
                         txt = '';
                 }
-
-
                 txt = txt || '';
 
-                
                 dom_txt = document.createTextNode(
                     GlobalVar.ReplaceEmptyHtmlContent(txt.toString()));
-                    //.replace("&nbsp", " ", "gi"));
 
                 dom_td.appendChild(dom_txt);
                 dom_tr.appendChild(dom_td);
@@ -832,7 +834,7 @@ GlobalVar.GetVisiableColumns = function (Columns) {
 //    normalGrid: Ext.getCmp(WQGrid.getId() + '-normal'),
 //    lockGrid: Ext.getCmp(WQGrid.getId() + '-locked')
 //}
-GlobalVar.ToExcel = function (ExtGrid, sheetName, fnRendererScore, GridLockAndNomarls) {
+GlobalVar.ToExcel = function (ExtGrid, sheetName, fnRendererScore, GridLockAndNomarls, fnBeforeGenarateExcel) {
     var me = this;
     var tableToExcel = (function () {
         var uri = 'data:application/vnd.ms-excel;base64,',
@@ -850,7 +852,7 @@ GlobalVar.ToExcel = function (ExtGrid, sheetName, fnRendererScore, GridLockAndNo
         }
     })();
 
-    var gridHtml = GlobalVar.gridToHtml(ExtGrid, fnRendererScore, GridLockAndNomarls);
+    var gridHtml = GlobalVar.gridToHtml(ExtGrid, fnRendererScore, GridLockAndNomarls, fnBeforeGenarateExcel);
     //document.getElementById('divHide').innerHTML = gridHtml.innerHTML;
     //console.log(gridHtml.innerHTML);
     tableToExcel(gridHtml.innerHTML, sheetName || 'sheet1');

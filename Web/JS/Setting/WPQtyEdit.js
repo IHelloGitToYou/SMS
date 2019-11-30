@@ -235,6 +235,70 @@
         WQForm.getComponent('jx_dd').setMaxValue(maxValue);
     }
 
+    var fnBeforeGenarateExcel =function (dom_table, dom_thead, dom_tbody) {
+
+        var top_tr = document.createElement('tr');
+
+        var dom_td = document.createElement('td');
+        dom_td.appendChild(document.createTextNode('单号'));
+
+        dom_td2 = document.createElement('td');
+        dom_td2.colSpan = 2;
+        dom_td2.appendChild(document.createTextNode(WQForm.getComponent('plan_no').getValue()));
+
+
+        var dom_td3 = document.createElement('td');
+        dom_td3.appendChild(document.createTextNode('货号'));
+
+        dom_td3_val = document.createElement('td');
+        dom_td3_val.colSpan = 2;
+        dom_td3_val.appendChild(document.createTextNode(WQForm.getComponent('prd_no').getValue()));
+
+        var dom_td4 = document.createElement('td');
+        dom_td4.appendChild(document.createTextNode('客户'));
+
+        dom_td4_val = document.createElement('td');
+        dom_td4_val.colSpan = 2;
+        dom_td4_val.appendChild(document.createTextNode(''));
+
+
+        var dom_td5 = document.createElement('td');
+        dom_td5.appendChild(document.createTextNode('总单数量'));
+
+        dom_td5_val = document.createElement('td');
+        dom_td5_val.colSpan = 2;
+        dom_td5_val.appendChild(document.createTextNode(''));
+
+        var dom_td6 = document.createElement('td');
+        dom_td6.appendChild(document.createTextNode('本组数量'));
+
+        dom_td6_val = document.createElement('td');
+        dom_td6_val.colSpan = 2;
+        dom_td6_val.appendChild(document.createTextNode(''));
+
+
+        var dom_td7 = document.createElement('td');
+        dom_td7.appendChild(document.createTextNode('日期:'));
+
+        dom_td7_val = document.createElement('td');
+        dom_td7_val.colSpan = 2;
+
+        var date = Ext.Date.format(WQForm.getComponent('jx_dd').getValue(), 'Y-m-d');
+        dom_td7_val.appendChild(document.createTextNode(date));
+
+
+        top_tr.appendChild(dom_td); top_tr.appendChild(dom_td2);
+        top_tr.appendChild(dom_td3); top_tr.appendChild(dom_td3_val);
+        top_tr.appendChild(dom_td4); top_tr.appendChild(dom_td4_val);
+        top_tr.appendChild(dom_td5); top_tr.appendChild(dom_td5_val);
+        top_tr.appendChild(dom_td6); top_tr.appendChild(dom_td6_val);
+        top_tr.appendChild(dom_td7); top_tr.appendChild(dom_td7_val);
+
+        dom_thead.appendChild(top_tr);
+
+        //
+    }
+
     var WQForm = Ext.create('Ext.form.Panel', {
         region: 'north',
         layout: {
@@ -322,7 +386,7 @@
                             GlobalVar.ToExcel(WQGrid, sheetName, window, {
                                 normalGrid: Ext.getCmp(WQGrid.getId() + '-normal'),
                                 lockGrid: Ext.getCmp(WQGrid.getId() + '-locked')
-                            });
+                            }, fnBeforeGenarateExcel );
                         },
                         FME
                     );
@@ -2040,7 +2104,7 @@
                     GlobalVar.ToExcel(WQGrid, sheetName, window, {
                         normalGrid: Ext.getCmp(WQGrid.getId() + '-normal'),
                         lockGrid: Ext.getCmp(WQGrid.getId() + '-locked')
-                    });
+                    }, fnBeforeGenarateExcel);
 
 
                 }

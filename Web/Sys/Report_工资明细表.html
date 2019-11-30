@@ -258,6 +258,9 @@
                  {
                      name: 'jx_dd', dataIndex: 'jx_dd', text: '计薪日', xtype: 'datecolumn', format: 'Y/m/d', width: 90,
                      renderer: function (v, m, rec) {
+                         if (!v)
+                             return '';
+
                          if (rec.get('row_sort') == 3) {
                              return '';
                          }

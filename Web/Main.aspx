@@ -76,7 +76,7 @@
     <script src="JS/ext-all.js" type="text/javascript"></script>
     <script src="JS/Setting/DataModel.js?version=9" type="text/javascript"></script>
     <script src="JS/SMSCommonJS.js?version=18" type="text/javascript"></script>
-    <script src="JS/GlobalVar.js?version=8" type="text/javascript"></script>
+    <script src="JS/GlobalVar.js?version=9" type="text/javascript"></script>
     <script src="JS/新SunEditor.js?version=18" type="text/javascript"></script>
     <script src="JS/Setting/WpConfig.js?version=13" type="text/javascript"></script>
     <script src="JS/Setting/CheckFlowHelper.js"></script>
